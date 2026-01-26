@@ -14,9 +14,11 @@ public record EmployeeDatasResponse(
         String siteId,
         @Column(name = "EmployeeLocalID")
         String localId,
-        String faceTemplate
+        @Column(name = "faceTemplate")
+        String faceTemplate,
+        String urlPhoto
 ) {
     public EmployeeDatasResponse(Employee employee) {
-        this(employee.getId(), employee.getName(), employee.getEmail(), employee.getSiteId(), employee.getLocalId(), employee.getFaceTemplate());
+        this(employee.getId(), employee.getName(), employee.getEmail(), employee.getSiteId(), employee.getLocalId(), employee.getFaceTemplate(), employee.getKeyPhoto());
     }
 }

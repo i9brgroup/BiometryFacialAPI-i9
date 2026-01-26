@@ -1,11 +1,19 @@
 package com.i9brgroup.jbarreto.facial_auth_i9.web.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.EmployeeServiceImpl;
+import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.EmployeeService;
+import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.request.EmployeePayloadPythonRequest;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.EmployeeDatasResponse;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.sdk.aws.S3Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,12 +26,14 @@ import java.util.List;
 @RestController
 public class EmployeeController {
 
-    private final EmployeeServiceImpl employeeService;
-    private final S3Service s3Service;
+    private final EmployeeService employeeService;
+    private final ObjectMapper objectMapper;
+    private static final Logger log = LoggerFactory.getLogger(EmployeeController.class);
 
-    public EmployeeController(EmployeeServiceImpl employeeService, S3Service s3Service) {
-        this.s3Service = s3Service;
+
+    public EmployeeController(EmployeeService employeeService, com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
         this.employeeService = employeeService;
+        this.objectMapper = objectMapper;
     }
 
     @GetMapping("/health")
@@ -44,17 +54,28 @@ public class EmployeeController {
         return ResponseEntity.ok(employees);
     }
 
-    @PostMapping(value = "/send-image-s3", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/process-payload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
-    public ResponseEntity<?> sendImageToS3(@RequestParam("file") MultipartFile file){
+    public ResponseEntity<?> sendImageToS3AndProcessEmbeddedTemplate(
+            @RequestParam("file") MultipartFile file,
+            @RequestPart("payload") String payloadJson) {
+
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().body("File is empty");
         }
 
-        var image = s3Service.uploadFile(file);
-        if (image){
-            return ResponseEntity.ok().build();
+        try {
+            EmployeePayloadPythonRequest payload = objectMapper.readValue(payloadJson, EmployeePayloadPythonRequest.class);
+
+            log.info("Received payload: {}", payload);
+            var response = employeeService.processPayload(payload, file);
+
+            if (response.status().equalsIgnoreCase("success")) {
+                return ResponseEntity.ok().body(response);
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        } catch (JsonProcessingException e) {
+            return ResponseEntity.badRequest().body("Erro ao processar o JSON do payload: " + e.getMessage());
         }
-        return ResponseEntity.badRequest().build();
     }
 }

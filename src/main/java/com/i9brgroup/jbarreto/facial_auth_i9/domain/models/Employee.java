@@ -7,6 +7,7 @@ import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.Immutable;
@@ -16,6 +17,7 @@ import org.hibernate.annotations.ParamDef;
 @Table(name = "EMPLOYEE")
 @Immutable
 @Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @FilterDef(name = "tenantFilter", parameters = @ParamDef(name = "siteId", type = String.class))
@@ -24,15 +26,17 @@ public class Employee {
 
     @Column(name = "[ID]")
     @Id
-    String id;
+    private String id;
     @Column(name = "[Name]")
-    String name;
+    private String name;
     @Column(name = "[EmployeeEMailAddress]")
-    String email;
+    private String email;
     @Column(name = "[EmployeeSiteID]")
-    String siteId;
+    private String siteId;
     @Column(name = "[EmployeeLocalID]")
-    String localId;
-    @Column(name = "faceTemplate")
-    String faceTemplate;
+    private String localId;
+    @Column(name = "[faceTemplate]")
+    private String faceTemplate;
+    @Column(name = "[keyPhoto]")
+    private String keyPhoto;
 }
