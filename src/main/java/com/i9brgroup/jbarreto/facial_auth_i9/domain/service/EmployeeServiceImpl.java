@@ -13,6 +13,7 @@ import com.i9brgroup.jbarreto.facial_auth_i9.web.sdk.aws.S3Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -25,6 +26,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.channels.ClosedChannelException;
 import java.util.List;
 
 @Service
@@ -34,9 +36,13 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final S3Service s3Service;
     private final ObjectMapper objectMapper;
     private static final Logger log = LoggerFactory.getLogger(EmployeeServiceImpl.class);
+    private final HttpClient httpClient;
+    @Value("${api.security.token.api_key}")
+    private String API_KEY;
 
     @Autowired
-    public EmployeeServiceImpl(EmployeeRepository employeeRepository, S3Service s3Service, ObjectMapper objectMapper) {
+    public EmployeeServiceImpl(EmployeeRepository employeeRepository, S3Service s3Service, ObjectMapper objectMapper, HttpClient httpClient) {
+        this.httpClient = httpClient;
         this.s3Service = s3Service;
         this.employeeRepository = employeeRepository;
         this.objectMapper = objectMapper;
@@ -74,31 +80,45 @@ public class EmployeeServiceImpl implements EmployeeService {
         try {
             var originalFileName = file.getOriginalFilename();
             var nameNormalized = payload.name().toLowerCase().replaceAll(" ", "_");
-            originalFileName = payload.siteId() + "_" + payload.localId() + "_" + nameNormalized;
+            String extension = "";
 
-            payload = new EmployeePayloadPythonRequest(
-                    payload.id(),
-                    payload.name(),
-                    payload.email(),
-                    payload.siteId(),
-                    payload.localId(),
-                    originalFileName
-            );
+            int i = file.getOriginalFilename().lastIndexOf('.');
+            if (i > 0) {
+                extension = file.getOriginalFilename().substring(i);
+            }
 
-            var s3Response = s3Service.uploadFile(file, payload.photoKey());
+            String s3Key = payload.siteId() + "_" + payload.localId() + "_" + nameNormalized + extension;
+
+
+
+            var s3Response = s3Service.uploadFile(file, s3Key);
 
             if (s3Response){
+                log.info("Arquivo {} enviado com sucesso para o S3 com a chave {}", originalFileName, s3Key);
+                var presignedURL = s3Service.generatedPreSignedUrlForPhotosEmployees(s3Key);
+                payload = new EmployeePayloadPythonRequest(
+                        payload.id(),
+                        payload.name(),
+                        payload.email(),
+                        payload.siteId(),
+                        payload.localId(),
+                        presignedURL
+                );
+
                 var paylaodResponse = sendPayloadToPythonService(payload, sendPayloadURL);
+                log.info("Chave da foto do s3 {}", payload.photoKey());
                 log.info(paylaodResponse.jobID());
 
                 if (paylaodResponse.status().equalsIgnoreCase("accepted")){
-                    Thread.sleep(3000);
                     return waitForJobCompletion(paylaodResponse.jobID(), workerStatusJobURL, originalFileName);
                 } else {
                     log.error("Payload não aceito pelo serviço Python. Status: {}", paylaodResponse.status());
                     throw new RuntimeException("Payload não aceito pelo serviço Python");
                 }
             }
+        } catch (ClosedChannelException closedChannelException){
+            log.error("Conexão encerrada abruptamente ao processar payload: {}", closedChannelException.getMessage());
+            throw new RuntimeException("Erro no processamento do funcionário", closedChannelException);
         } catch (Exception e) {
             log.error("Erro ao processar payload: {}", e.getMessage());
             throw new RuntimeException("Erro no processamento do funcionário", e);
@@ -108,21 +128,21 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
-    public ProcessPayloadResponse sendPayloadToPythonService(EmployeePayloadPythonRequest payload, String url) {
+    public ProcessPayloadResponse sendPayloadToPythonService(EmployeePayloadPythonRequest payload, String url) throws ClosedChannelException {
         try {
             String jsonBody = objectMapper.writeValueAsString(payload);
-
+            System.out.println("CHAVE DA API - VALUE == " + API_KEY);
             log.info("DEBUG CONTEUDO DO JSON {}", jsonBody);
 
-            HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .version(HttpClient.Version.HTTP_1_1)
                     .header("Content-Type", "application/json")
+                    .header("X-API-KEY", API_KEY)
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                     .build();
 
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
                 log.error("Erro ao enviar payload para Python. Status: {} Body: {}",
@@ -136,9 +156,24 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         } catch (JsonProcessingException e) {
             log.error("Erro ao serializar payload para JSON: {}", e.getMessage());
+            var deleteFile = s3Service.deleteFile(payload.photoKey());
+            if (deleteFile){
+                log.info("Rollback realizado: Arquivo {} removido do S3 após erro de serialização. ", payload.photoKey());
+            }
             throw new RuntimeException("Erro de serialização do payload", e);
+        } catch (ClosedChannelException e) {
+            log.error("Conexão encerrada abruptamente. O serviço Python pode estar offline ou reiniciando. ", e);
+            var deleteFile = s3Service.deleteFile(payload.photoKey());
+            if (deleteFile){
+                log.info("Rollback realizado: Arquivo {} removido do S3 após erro de conexao fechada pelo python. ", payload.photoKey());
+            }
+            throw new ClosedChannelException();
         } catch (IOException | InterruptedException e) {
             log.error("Erro na comunicação com o serviço Python: {}", e.getMessage());
+            var deleteFile = s3Service.deleteFile(payload.photoKey());
+            if (deleteFile){
+                log.info("Rollback realizado: Arquivo {} removido do S3 após erro de comunicacao - IOException. ", payload.photoKey());
+            }
             Thread.currentThread().interrupt();
             throw new RuntimeException("Erro de rede ao comunicar com serviço Python", e);
         }
@@ -149,16 +184,18 @@ public class EmployeeServiceImpl implements EmployeeService {
         String completeUrl = url + "/" + idProcess;
         try {
 
-            HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(completeUrl))
                     .header("Content-Type", "application/json")
                     .GET()
                     .build();
 
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             return objectMapper.readValue(response.body(), StatusJobResponse.class);
+        } catch (ClosedChannelException closedChannelException){
+            log.error("Conexão encerrada abruptamente ao verificar status do job: {}", closedChannelException.getMessage());
+            throw new RuntimeException("Erro ao verificar status do job", closedChannelException);
         } catch (InterruptedException | IOException e) {
             throw new RuntimeException(e);
         }

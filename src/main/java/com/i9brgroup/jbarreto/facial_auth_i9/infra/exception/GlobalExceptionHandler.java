@@ -8,6 +8,7 @@ import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.nio.channels.ClosedChannelException;
 import java.time.LocalDateTime;
 
 @RestControllerAdvice
@@ -41,5 +42,15 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST.value()
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(ClosedChannelException.class)
+    public ResponseEntity<ErrorResponse> handleClosedChannelException(ClosedChannelException ex){
+        ErrorResponse error = new ErrorResponse(
+                "Erro ao comunicar com o serviço externo. Por favor, tente novamente mais tarde.",
+                LocalDateTime.now(),
+                HttpStatus.SERVICE_UNAVAILABLE.value()
+        );
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(error);
     }
 }

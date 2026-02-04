@@ -26,7 +26,7 @@ public class TokenService {
             return JWT.create()
                     .withIssuer("Authentication API - i9brgroup")
                     .withSubject(user.getEmail())
-                    .withClaim("Usernamen", user.getUsername())
+                    .withClaim("Username", user.getUsername())
                     .withClaim("siteId", user.getSiteId())
                     .withExpiresAt(expiresAt())
                     .sign(algorithm);
