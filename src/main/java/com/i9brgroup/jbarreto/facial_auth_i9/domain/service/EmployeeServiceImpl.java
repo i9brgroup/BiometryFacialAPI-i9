@@ -8,7 +8,6 @@ import com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.EmployeeReposi
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.request.EmployeePayloadPythonRequest;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.EmployeeDatasResponse;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.ProcessPayloadResponse;
-import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.StatusJobResponse;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.sdk.aws.S3Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,10 +68,8 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
-    public StatusJobResponse processPayload(EmployeePayloadPythonRequest payload, MultipartFile file) {
+    public ProcessPayloadResponse processPayload(EmployeePayloadPythonRequest payload, MultipartFile file) {
         String sendPayloadURL = "http://127.0.0.1:8000/employee/payload";
-        String workerStatusJobURL = "http://127.0.0.1:8000/employee/payload/status";
-
         if (file.isEmpty()) {
             throw new RuntimeException("File is empty");
         }
@@ -88,8 +85,6 @@ public class EmployeeServiceImpl implements EmployeeService {
             }
 
             String s3Key = payload.siteId() + "_" + payload.localId() + "_" + nameNormalized + extension;
-
-
 
             var s3Response = s3Service.uploadFile(file, s3Key);
 
@@ -107,10 +102,12 @@ public class EmployeeServiceImpl implements EmployeeService {
 
                 var paylaodResponse = sendPayloadToPythonService(payload, sendPayloadURL);
                 log.info("Chave da foto do s3 {}", payload.photoKey());
-                log.info(paylaodResponse.jobID());
 
-                if (paylaodResponse.status().equalsIgnoreCase("accepted")){
-                    return waitForJobCompletion(paylaodResponse.jobID(), workerStatusJobURL, originalFileName);
+                if (paylaodResponse.status().equalsIgnoreCase("done")){
+                    log.info("Payload enviado e processado com sucesso.");
+                    return new ProcessPayloadResponse(
+                            paylaodResponse.status()
+                    );
                 } else {
                     log.error("Payload não aceito pelo serviço Python. Status: {}", paylaodResponse.status());
                     throw new RuntimeException("Payload não aceito pelo serviço Python");
@@ -177,63 +174,5 @@ public class EmployeeServiceImpl implements EmployeeService {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Erro de rede ao comunicar com serviço Python", e);
         }
-    }
-
-    @Override
-    public StatusJobResponse viweWorkerProcessStatus(String idProcess, String url) {
-        String completeUrl = url + "/" + idProcess;
-        try {
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(completeUrl))
-                    .header("Content-Type", "application/json")
-                    .GET()
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-            return objectMapper.readValue(response.body(), StatusJobResponse.class);
-        } catch (ClosedChannelException closedChannelException){
-            log.error("Conexão encerrada abruptamente ao verificar status do job: {}", closedChannelException.getMessage());
-            throw new RuntimeException("Erro ao verificar status do job", closedChannelException);
-        } catch (InterruptedException | IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Override
-    public StatusJobResponse waitForJobCompletion(String idProcess, String baseUrl, String keyPhoto) {
-        int attempts = 0;
-        int maxAttempts = 10;
-        int delayBetweenAttemptsMs = 1000;
-
-        while (attempts < maxAttempts) {
-            var response = viweWorkerProcessStatus(idProcess, baseUrl);
-
-            if ("done".equalsIgnoreCase(response.job().status())){
-                return response;
-            }
-
-            if ("failed".equalsIgnoreCase(response.job().status()) || "error".equalsIgnoreCase(response.job().status())) {
-                log.warn("Job {} falhou no serviço Python.", idProcess);
-                s3Service.deleteFile(keyPhoto);
-                throw new RuntimeException("Job " + idProcess + " falhou no serviço Python.");
-            }
-
-            if ("pending".equalsIgnoreCase(response.job().status())) {
-                log.info("Job {} ainda está pendente. Tentativa {}/{}", idProcess, attempts + 1, maxAttempts);
-            }
-
-            log.info("Job {} ainda processando... Tentativa {}/{}", idProcess, attempts + 1, maxAttempts);
-            try {
-                Thread.sleep(delayBetweenAttemptsMs);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-            attempts++;
-        }
-        log.error("Tempo esgotado aguardando a conclusão do job {}.", idProcess);
-        s3Service.deleteFile(keyPhoto);
-        throw new RuntimeException("Tempo esgotado aguardando a conclusão do job " + idProcess + ".");
     }
 }

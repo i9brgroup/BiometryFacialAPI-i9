@@ -67,7 +67,7 @@ public class EmployeeController {
             log.info("Received payload: {}", payload);
             var response = employeeService.processPayload(payload, file);
 
-            if (response.status().equalsIgnoreCase("success")) {
+            if (response.status().equalsIgnoreCase("done")) {
                 return ResponseEntity.ok().body(response);
             }
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
