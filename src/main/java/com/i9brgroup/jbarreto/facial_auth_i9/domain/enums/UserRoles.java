@@ -4,6 +4,5 @@ public enum UserRoles {
     SUPER_ADMIN,
     ADMIN,
     USER,
-    DEFAULT,
-    GERENTE
+    DEFAULT
 }
