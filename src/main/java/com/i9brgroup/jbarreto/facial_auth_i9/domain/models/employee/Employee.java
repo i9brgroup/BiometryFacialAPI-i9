@@ -1,4 +1,4 @@
-package com.i9brgroup.jbarreto.facial_auth_i9.domain.models;
+package com.i9brgroup.jbarreto.facial_auth_i9.domain.models.employee;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

@@ -1,6 +1,6 @@
 package com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response;
 
-import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.UserLoginEntity;
+import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.UserLoginEntity;
 
 import java.time.LocalDateTime;
 

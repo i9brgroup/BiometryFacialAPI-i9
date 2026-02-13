@@ -1,4 +1,4 @@
-package com.i9brgroup.jbarreto.facial_auth_i9.domain.models;
+package com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth;
 
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.enums.UserRoles;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.request.UserLoginRequest;

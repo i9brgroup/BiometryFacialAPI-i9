@@ -1,6 +1,6 @@
 package com.i9brgroup.jbarreto.facial_auth_i9.web.controller;
 
-import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.UserLoginEntity;
+import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.UserLoginEntity;
 import com.i9brgroup.jbarreto.facial_auth_i9.infra.security.service.TokenService;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.request.AuthenticationDataRequest;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.TokenResponse;

@@ -1,6 +1,6 @@
 package com.i9brgroup.jbarreto.facial_auth_i9.infra.filters.aspect;
 
-import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.UserLoginEntity;
+import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.UserLoginEntity;
 import jakarta.persistence.EntityManager;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;

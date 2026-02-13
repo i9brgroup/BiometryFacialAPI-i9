@@ -1,6 +1,6 @@
 package com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response;
 
-import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.Employee;
+import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.employee.Employee;
 import jakarta.persistence.Column;
 
 public record EmployeeDatasResponse(

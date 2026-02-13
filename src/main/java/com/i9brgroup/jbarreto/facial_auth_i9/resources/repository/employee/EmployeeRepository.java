@@ -1,14 +1,13 @@
-package com.i9brgroup.jbarreto.facial_auth_i9.resources.repository;
-
-import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.Employee;
+package com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.employee;
+ 
+import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.employee.Employee;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.security.core.userdetails.UserDetails;
-
+ 
 import java.util.List;
-
-public interface EmployeeRepository extends JpaRepository<Employee, Long> {
+ 
+public interface EmployeeRepository extends JpaRepository<Employee, String> {
 
     List<Employee> findByNameContainingIgnoreCase(String name);
 
