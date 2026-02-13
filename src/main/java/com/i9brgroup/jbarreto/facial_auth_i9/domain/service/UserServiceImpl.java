@@ -1,10 +1,9 @@
 package com.i9brgroup.jbarreto.facial_auth_i9.domain.service;
 
-import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.UserLoginEntity;
+import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.UserLoginEntity;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.UserLoginService;
-import com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.UserRepository;
+import com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.auth.UserRepository;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.request.UserLoginRequest;
-import jakarta.websocket.server.ServerEndpoint;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;

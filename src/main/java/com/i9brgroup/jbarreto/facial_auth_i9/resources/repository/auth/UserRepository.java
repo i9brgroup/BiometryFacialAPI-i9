@@ -1,6 +1,6 @@
-package com.i9brgroup.jbarreto.facial_auth_i9.resources.repository;
+package com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.auth;
 
-import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.UserLoginEntity;
+import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.UserLoginEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.security.core.userdetails.UserDetails;
 

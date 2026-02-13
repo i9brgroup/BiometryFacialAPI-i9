@@ -2,9 +2,9 @@ package com.i9brgroup.jbarreto.facial_auth_i9.domain.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.Employee;
+import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.employee.Employee;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.EmployeeService;
-import com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.EmployeeRepository;
+import com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.employee.EmployeeRepository;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.request.EmployeePayloadPythonRequest;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.EmployeeDatasResponse;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.ProcessPayloadResponse;
