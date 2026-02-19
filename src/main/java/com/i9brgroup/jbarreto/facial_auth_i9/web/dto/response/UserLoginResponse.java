@@ -5,12 +5,13 @@ import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.UserLoginEntity;
 import java.time.LocalDateTime;
 
 public record UserLoginResponse(
+        String status,
         String username,
         String email,
         String siteId,
-        LocalDateTime crreatedAt
+        LocalDateTime createdAt
 ) {
     public UserLoginResponse(UserLoginEntity user) {
-        this(user.getUsername(), user.getEmail(), user.getSiteId(), user.getCreatedAt());
+        this("success", user.getUsername(), user.getEmail(), user.getSiteId(), user.getCreatedAt());
     }
 }
