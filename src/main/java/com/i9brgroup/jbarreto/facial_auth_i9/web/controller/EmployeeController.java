@@ -27,8 +27,7 @@ public class EmployeeController {
     private final ObjectMapper objectMapper;
     private static final Logger log = LoggerFactory.getLogger(EmployeeController.class);
 
-
-    public EmployeeController(EmployeeService employeeService, com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
+    public EmployeeController(EmployeeService employeeService, ObjectMapper objectMapper) {
         this.employeeService = employeeService;
         this.objectMapper = objectMapper;
     }

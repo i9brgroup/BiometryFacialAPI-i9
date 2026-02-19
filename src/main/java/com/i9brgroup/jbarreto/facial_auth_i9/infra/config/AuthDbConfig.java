@@ -1,6 +1,7 @@
 package com.i9brgroup.jbarreto.facial_auth_i9.infra.config;
 
 import jakarta.persistence.EntityManagerFactory;
+import org.flywaydb.core.Flyway;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.jdbc.DataSourceBuilder;
@@ -25,14 +26,13 @@ import javax.sql.DataSource;
 )
 public class AuthDbConfig {
 
-    @Primary
+
     @Bean(name = "authDataSource")
     @ConfigurationProperties(prefix = "spring.datasource.auth")
     public DataSource dataSource(){
         return DataSourceBuilder.create().build();
     }
 
-    @Primary
     @Bean(name = "authEntityManagerFactory")
     public LocalContainerEntityManagerFactoryBean entityManagerFactory(
             EntityManagerFactoryBuilder builder, @Qualifier("authDataSource") DataSource dataSource) {
@@ -43,11 +43,19 @@ public class AuthDbConfig {
                 .build();
     }
 
-    @Primary
     @Bean(name = "authTransactionManager")
     public PlatformTransactionManager transactionManager(
             @Qualifier("authEntityManagerFactory")EntityManagerFactory entityManagerFactory) {
         return new JpaTransactionManager(entityManagerFactory);
     }
 
+    @Bean(initMethod = "migrate")
+    @ConfigurationProperties(prefix = "spring.flyway-auth")
+    public Flyway authFlyway(@Qualifier("authDataSource") DataSource dataSource) {
+        return Flyway.configure()
+                .dataSource(dataSource)
+                .locations("classpath:db/migration/auth")
+                .baselineOnMigrate(true)
+                .load();
+    }
 }

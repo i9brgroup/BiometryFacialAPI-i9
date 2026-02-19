@@ -2,30 +2,31 @@ package com.i9brgroup.jbarreto.facial_auth_i9.infra.filters.aspect;
 
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.UserLoginEntity;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
 import org.hibernate.Session;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 @Aspect
-@Configuration
+@Component
 public class UserFilterAspect {
 
-    private final EntityManager entityManager;
+    @PersistenceContext(unitName = "employee")
+    private EntityManager entityManager;
 
-    public UserFilterAspect(EntityManager entityManager) {
-        this.entityManager = entityManager;
-    }
-
-    @Before(value = ("execution( * com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.*.*(..))"))
+    @Before("execution(* com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.employee..*.*(..))")
     public void setUserFilter() {
+        System.out.println("=== ASPECT EXECUTADO ===");
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
         // 1. SE NÃO ESTIVER LOGADO (Login, Register, Swagger)
         // O auth.getPrincipal() será a string "anonymousUser"
         if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
+            System.out.println("=== USUARIO NAO AUTENTICADO, PULANDO FILTRO ===");
             // Não faz nada! Deixa a query passar sem filtro.
             // Isso permite que o userRepository.findByEmail funcione.
             return;
@@ -35,9 +36,10 @@ public class UserFilterAspect {
         // Agora é seguro fazer o Cast
         if (auth.getPrincipal() instanceof UserLoginEntity) {
             UserLoginEntity user = (UserLoginEntity) auth.getPrincipal();
+            System.out.println("=== APLICANDO FILTRO PARA SITE ID: " + user.getSiteId() + " ===");
             Session session = entityManager.unwrap(Session.class);
-            System.out.println("Site ID: " + user.getSiteId());
             session.enableFilter("tenantFilter").setParameter("siteId", user.getSiteId());
+            System.out.println("=== FILTRO APLICADO COM SUCESSO ===");
         }
     }
 }

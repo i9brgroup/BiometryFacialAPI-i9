@@ -28,3 +28,13 @@ CREATE NONCLUSTERED INDEX IX_biometric_login_username
 -- Create index on created_at for temporal queries
 CREATE NONCLUSTERED INDEX IX_biometric_login_created_at
     ON biometric_login(created_at DESC);
+
+INSERT INTO biometric_login
+    (username, email, password, created_at, site_id, roles)
+VALUES
+    ('Junior Teste',
+     'jrjunior@hotmail.com',
+     '$2a$12$d6t7fl0WVykkqnLhMevDLeMWpDk9969.30kKwyl6oOOPA1ZIxJdde',
+     CURRENT_TIMESTAMP,
+     'SITE01',
+     'SUPER_ADMIN')
