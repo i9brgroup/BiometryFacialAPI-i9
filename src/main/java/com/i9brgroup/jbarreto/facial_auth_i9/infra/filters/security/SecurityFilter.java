@@ -33,9 +33,11 @@ public class SecurityFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
         String uri = request.getRequestURI();
-        String method = request.getMethod();
-        // Skip the filter for POST /api/v1/auth/login
-        return "POST".equalsIgnoreCase(method) && uri != null && uri.endsWith("/api/v1/auth/login");
+
+        return uri.startsWith("/swagger-ui")
+                || uri.startsWith("/v3/api-docs")
+                || uri.startsWith("/favicon.ico")
+                || uri.endsWith("/api/v1/auth/login");
     }
 
     @Override

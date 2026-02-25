@@ -4,6 +4,7 @@ import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.UserLoginEntity;
 import com.i9brgroup.jbarreto.facial_auth_i9.infra.security.service.TokenService;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.request.AuthenticationDataRequest;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.TokenResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/auth")
+@SecurityRequirement(name = "bearer")
 public class AuthenticationController {
 
     private final AuthenticationManager authenticationManager;
