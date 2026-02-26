@@ -1,6 +1,8 @@
 package com.i9brgroup.jbarreto.facial_auth_i9.web.controller;
 
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.UserLoginEntity;
+import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.UserAuthentication;
+import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.UserServiceImpl;
 import com.i9brgroup.jbarreto.facial_auth_i9.infra.security.service.TokenService;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.request.AuthenticationDataRequest;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.TokenResponse;
@@ -17,24 +19,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/auth")
 public class AuthenticationController {
 
-    private final AuthenticationManager authenticationManager;
-    private final TokenService tokenService;
+    private final UserServiceImpl userAuthentication;
 
-    public AuthenticationController(AuthenticationManager authenticationManager, TokenService tokenService) {
-        this.tokenService = tokenService;
-        this.authenticationManager = authenticationManager;
+    public AuthenticationController(UserServiceImpl userAuthentication) {
+        this.userAuthentication = userAuthentication;
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody @Valid AuthenticationDataRequest userDataDTO){
-        var authenticationToken = new UsernamePasswordAuthenticationToken(userDataDTO.email(), userDataDTO.password());
-        var auth = authenticationManager.authenticate(authenticationToken);
-        var user = (UserLoginEntity) auth.getPrincipal();
-
-        if (user == null) {
-            return ResponseEntity.badRequest().body("Invalid credentials");
-        }
-        var tokenString = tokenService.generateToken(user);
+        var tokenString = userAuthentication.login(userDataDTO);
 
         return ResponseEntity.ok().body(new TokenResponse(tokenString));
     }

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class UserAuthentication implements UserDetailsService {
 
+
     private final UserRepository userRepository;
 
     public UserAuthentication(UserRepository userRepository) {
@@ -19,7 +20,7 @@ public class UserAuthentication implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         var user = userRepository.findByEmail((username));
         if (user == null) {
-            throw new UsernameNotFoundException("User not found with email: " + username);
+            throw new UsernameNotFoundException("Credenciais incorretas para o user: " + username);
         }
         return user;
     }
