@@ -3,7 +3,6 @@ package com.i9brgroup.jbarreto.facial_auth_i9.infra.config;
 import com.i9brgroup.jbarreto.facial_auth_i9.infra.filters.interceptor.TenantFilterInterceptor;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
-import org.flywaydb.core.Flyway;
 import org.hibernate.cfg.AvailableSettings;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -75,14 +74,14 @@ public class EmployeeDbConfig {
         return SharedEntityManagerCreator.createSharedEntityManager(entityManagerFactory);
     }
 
-    @Primary
-    @Bean(initMethod = "migrate")
-    @ConfigurationProperties(prefix = "spring.flyway-employee")
-    public Flyway employeeFlyway(@Qualifier("employeeDataSource") DataSource dataSource) {
-        return Flyway.configure()
-                .dataSource(dataSource)
-                .locations("classpath:db/migration/employee")
-                .baselineOnMigrate(true)
-                .load();
-    }
+//    @Primary
+//    @Bean(initMethod = "migrate")
+//    @ConfigurationProperties(prefix = "spring.flyway-employee")
+//    public Flyway employeeFlyway(@Qualifier("employeeDataSource") DataSource dataSource) {
+//        return Flyway.configure()
+//                .dataSource(dataSource)
+//                .locations("classpath:db/migration/employee")
+//                .baselineOnMigrate(true)
+//                .load();
+//    }
 }

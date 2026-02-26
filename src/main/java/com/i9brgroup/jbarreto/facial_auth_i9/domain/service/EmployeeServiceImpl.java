@@ -17,6 +17,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -38,6 +40,9 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final HttpClient httpClient;
     @Value("${api.security.token.api_key}")
     private String API_KEY;
+    @Value("${api.service.python.base_url}")
+    private String BASE_URL_PYTHON;
+    private Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
     @Autowired
     public EmployeeServiceImpl(EmployeeRepository employeeRepository, S3Service s3Service, ObjectMapper objectMapper, HttpClient httpClient) {
@@ -69,8 +74,14 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     public ProcessPayloadResponse processPayload(EmployeePayloadPythonRequest payload, MultipartFile file) {
-        String sendPayloadURL = "http://127.0.0.1:8000/employee/payload";
+        String sendPayloadURL = BASE_URL_PYTHON + "employee/payload";
+
+        if (auth != null){
+            log.info("Usuario {} iniciou o processamento do payload do funcionário: {}", auth.getName(), payload.name());
+        }
+
         if (file.isEmpty()) {
+            log.error("Arquivo de foto vazio recebido pela usuario {} para o funcionário {}. ", auth != null ? auth.getName() : "Desconecido", payload.name());
             throw new RuntimeException("File is empty");
         }
 
@@ -101,7 +112,6 @@ public class EmployeeServiceImpl implements EmployeeService {
                 );
 
                 var paylaodResponse = sendPayloadToPythonService(payload, sendPayloadURL);
-                log.info("Chave da foto do s3 {}", payload.photoKey());
 
                 if (paylaodResponse.status().equalsIgnoreCase("done")){
                     log.info("Payload enviado e processado com sucesso.");
@@ -128,8 +138,8 @@ public class EmployeeServiceImpl implements EmployeeService {
     public ProcessPayloadResponse sendPayloadToPythonService(EmployeePayloadPythonRequest payload, String url) throws ClosedChannelException {
         try {
             String jsonBody = objectMapper.writeValueAsString(payload);
-            System.out.println("CHAVE DA API - VALUE == " + API_KEY);
-            log.info("DEBUG CONTEUDO DO JSON {}", jsonBody);
+
+            log.debug("DEBUG CONTEUDO DO JSON {}", jsonBody);
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))

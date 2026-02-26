@@ -85,23 +85,23 @@
             <version>4.2.1</version>
         </dependency>
 
-		<!-- Flyway starter (auto-config) -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-flyway</artifactId>
-		</dependency>
+<!--		&lt;!&ndash; Flyway starter (auto-config) &ndash;&gt;-->
+<!--		<dependency>-->
+<!--			<groupId>org.springframework.boot</groupId>-->
+<!--			<artifactId>spring-boot-starter-flyway</artifactId>-->
+<!--		</dependency>-->
 
-		<!-- Explicitly add Flyway core and SQL Server module with a known existing version to ensure resolution -->
-		<dependency>
-			<groupId>org.flywaydb</groupId>
-			<artifactId>flyway-core</artifactId>
-			<version>11.14.1</version>
-		</dependency>
-		<dependency>
-			<groupId>org.flywaydb</groupId>
-			<artifactId>flyway-sqlserver</artifactId>
-			<version>11.14.1</version>
-		</dependency>
+<!--		&lt;!&ndash; Explicitly add Flyway core and SQL Server module with a known existing version to ensure resolution &ndash;&gt;-->
+<!--		<dependency>-->
+<!--			<groupId>org.flywaydb</groupId>-->
+<!--			<artifactId>flyway-core</artifactId>-->
+<!--			<version>11.14.1</version>-->
+<!--		</dependency>-->
+<!--		<dependency>-->
+<!--			<groupId>org.flywaydb</groupId>-->
+<!--			<artifactId>flyway-sqlserver</artifactId>-->
+<!--			<version>11.14.1</version>-->
+<!--		</dependency>-->
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
