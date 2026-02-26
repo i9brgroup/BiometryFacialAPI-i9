@@ -2,6 +2,7 @@ package com.i9brgroup.jbarreto.facial_auth_i9.web.sdk.aws;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import org.apache.tika.Tika;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequ
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -28,6 +30,7 @@ public class S3Service {
 
     private final S3Credentials s3Credentials;
     private static final Logger log = LoggerFactory.getLogger(S3Service.class);
+    private final Tika tika = new Tika();
 
     public S3Service(S3Credentials s3Credentials) {
         this.s3Credentials = s3Credentials;
@@ -74,12 +77,17 @@ public class S3Service {
 
     public boolean uploadFile(MultipartFile multipartFile, String keyName) {
         String contentType = multipartFile.getContentType();
-        if (contentType == null || 
-            !(contentType.equals("image/jpeg") || 
-              contentType.equals("image/png") || 
-              contentType.equals("image/jpg"))) {
-            log.error("Tipo de arquivo inválido: {}", contentType);
-            throw new IllegalArgumentException("Apenas arquivos JPEG e PNG são permitidos.");
+        try {
+            if (contentType == null ||
+                    !(contentType.equals("image/jpeg") ||
+                            contentType.equals("image/png") ||
+                            contentType.equals("image/jpg")) || !isValidImageFormat(multipartFile)) {
+                log.error("Tipo de arquivo inválido: {}", contentType);
+                throw new IllegalArgumentException("Apenas arquivos JPEG e PNG são permitidos.");
+            }
+        }catch (IOException ioException){
+            log.error("Erro ao validar o formato do arquivo: {}", ioException.getMessage());
+            throw new RuntimeException("Falha ao validar o formato do arquivo", ioException);
         }
 
         try {
@@ -152,5 +160,12 @@ public class S3Service {
             log.error("FALHA CRÍTICA NO ROLLBACK: Não foi possível deletar o arquivo {}. Erro: {}", key, e.awsErrorDetails().errorMessage());
             return false;
         }
+    }
+
+    public boolean isValidImageFormat(MultipartFile file) throws IOException {
+        String detectedType = tika.detect(file.getInputStream());
+
+        List<String> allowedTypes = List.of("image/jpeg", "image/png", "image/jpg");
+        return allowedTypes.contains(detectedType);
     }
 }
