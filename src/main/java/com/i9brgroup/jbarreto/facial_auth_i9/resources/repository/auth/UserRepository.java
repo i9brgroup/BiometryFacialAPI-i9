@@ -1,10 +1,22 @@
 package com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.auth;
 
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.UserLoginEntity;
+import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.security.core.userdetails.UserDetails;
 
 public interface UserRepository extends JpaRepository<UserLoginEntity, Long> {
     UserDetails findByEmail(String email);
     boolean existsByEmail(String email);
+    @Modifying
+    @Transactional
+    @Query("UPDATE UserLoginEntity u SET u.photo = :photoKeyS3 WHERE u.id = :id")
+    void updatePhotoKeyS3ByID(@Param("id") String id, @Param("photoKeyS3") String photoKeyS3);
+    @Modifying
+    @Transactional
+    @Query("UPDATE UserLoginEntity u SET u.photo = NULL WHERE u.id = :id")
+    boolean rollbackPhotoKeyS3ByID(@Param("id") String id);
 }

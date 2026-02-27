@@ -1,6 +1,5 @@
 package com.i9brgroup.jbarreto.facial_auth_i9.infra.config;
 
-import com.i9brgroup.jbarreto.facial_auth_i9.infra.filters.interceptor.TenantFilterInterceptor;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import org.hibernate.cfg.AvailableSettings;
@@ -31,12 +30,6 @@ import java.util.Map;
 )
 public class EmployeeDbConfig {
 
-    private final TenantFilterInterceptor tenantFilterInterceptor;
-
-    public EmployeeDbConfig(TenantFilterInterceptor tenantFilterInterceptor) {
-        this.tenantFilterInterceptor = tenantFilterInterceptor;
-    }
-
     @Primary
     @Bean(name = "employeeDataSource")
     @ConfigurationProperties(prefix = "spring.datasource.employee")
@@ -49,14 +42,10 @@ public class EmployeeDbConfig {
     public LocalContainerEntityManagerFactoryBean entityManagerFactory(
             EntityManagerFactoryBuilder builder, @Qualifier("employeeDataSource") DataSource dataSource) {
 
-        Map<String, Object> properties = new HashMap<>();
-        properties.put(AvailableSettings.STATEMENT_INSPECTOR, tenantFilterInterceptor);
-
         return builder
                 .dataSource(dataSource)
                 .packages("com.i9brgroup.jbarreto.facial_auth_i9.domain.models.employee")
                 .persistenceUnit("employee")
-                .properties(properties)
                 .build();
     }
 
