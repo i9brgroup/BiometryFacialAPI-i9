@@ -27,16 +27,20 @@ public class Employee {
     @Column(name = "[ID]")
     @Id
     private String id;
-    @Column(name = "[Name]")
-    private String name;
+    @Column(name = "[FirstName]")
+    private String firstName;
+    @Column(name = "[LastName]")
+    private String lastName;
     @Column(name = "[EmployeeEMailAddress]")
     private String email;
     @Column(name = "[EmployeeSiteID]")
     private String siteId;
     @Column(name = "[EmployeeLocalID]")
     private String localId;
-    @Column(name = "[faceTemplate]")
+    @Column(name = "[FingerPrintTemplate]")
     private String faceTemplate;
-    @Column(name = "[keyPhoto]")
-    private String keyPhoto;
+
+    public String getName() {
+        return (firstName != null ? firstName : "") + (lastName != null ? " " + lastName : "");
+    }
 }

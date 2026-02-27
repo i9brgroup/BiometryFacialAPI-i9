@@ -19,6 +19,6 @@ public record EmployeeDatasResponse(
         String urlPhoto
 ) {
     public EmployeeDatasResponse(Employee employee) {
-        this(employee.getId(), employee.getName(), employee.getEmail(), employee.getSiteId(), employee.getLocalId(), employee.getFaceTemplate(), employee.getKeyPhoto());
+        this(employee.getId(), employee.getName(), employee.getEmail(), employee.getSiteId(), employee.getLocalId(), employee.getFaceTemplate(), null);
     }
 }

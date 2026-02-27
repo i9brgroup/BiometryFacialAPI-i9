@@ -11,10 +11,7 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
@@ -42,33 +39,50 @@ public class S3Service {
             .build();
 
     public AwsBasicCredentials credentials() {
-        System.out.println("Get a credentials an s3");
         return AwsBasicCredentials.create(s3Credentials.getAccessKey(),
                 s3Credentials.getSecretKey());
     }
 
     public S3Client s3Client() {
-        System.out.println("Connecting a provider bucket s3");
         Region region = Region.of(s3Credentials.getRegion());
-        System.out.println("Using AWS region from config: " + region.id());
         return S3Client.builder()
                 .region(region)
                 .credentialsProvider(StaticCredentialsProvider.create(credentials()))
                 .build();
     }
 
+    protected boolean doesObjectExist(String keyName){
+        try {
+            HeadObjectRequest headObjectRequest = HeadObjectRequest.builder()
+                    .bucket(s3Credentials.getBucketName())
+                    .key("photos/" + keyName)
+                    .build();
+
+            s3Client().headObject(headObjectRequest);
+            return true; // O objeto existe
+        } catch (NoSuchKeyException e) {
+            log.error("A key {} não existe no bucket {}. Erro: {}", keyName, s3Credentials.getBucketName(), e.awsErrorDetails().errorMessage());
+            return false;
+        } catch (S3Exception e) {
+            // Trata outros possíveis erros, como permissão negada (403)
+            log.error("Erro ao verificar S3: {}", e.awsErrorDetails().errorMessage());
+            return false;
+        }
+    }
+
     public String getPreSignedUrl(String keyName) {
         String cacheUrl = urlCache.getIfPresent(keyName);
-
         if (cacheUrl != null) {
-            log.info("[CACHE HIT] URL Recuperada da memoria para: {} ", keyName);
+            log.debug("[CACHE HIT] URL recuperada para: {}", keyName);
             return cacheUrl;
         }
 
         log.info("[CACHE MISS] Gerando nova URL no S3 para: {}", keyName);
         String newUrl = generatedPreSignedUrlForPhotosEmployees(keyName);
-        urlCache.put(keyName, newUrl);
-        log.info("[CACHE ADDED] URL adicionada na memoria para: {}", keyName);
+        if (newUrl != null) {
+            urlCache.put(keyName, newUrl);
+            log.debug("[CACHE ADDED] URL adicionada para: {}", keyName);
+        }
         return newUrl;
     }
 
@@ -103,14 +117,12 @@ public class S3Service {
 
     public String generatedPreSignedUrlForPhotosEmployees(String keyName) {
         Region region = Region.of(s3Credentials.getRegion());
-        System.out.println("Creating presigned URL using AWS region: " + region.id());
+        log.debug("Criando URL pré-assinada na região: {}", region.id());
 
-        // Ensure we generate the presigned URL for the same object key used on upload
         String objectKey = keyName;
         if (!objectKey.startsWith("photos/")) {
             objectKey = "photos/" + objectKey;
         }
-        System.out.println("Generating presigned URL for object key: " + objectKey);
 
         try (S3Presigner presigner = S3Presigner.builder()
                 .region(region)
@@ -123,15 +135,17 @@ public class S3Service {
                     .build();
 
             GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-                    .signatureDuration(Duration.ofMinutes(55))  // The URL will expire in 55 minutes.
+                    .signatureDuration(Duration.ofMinutes(55))
                     .getObjectRequest(objectRequest)
                     .build();
 
             PresignedGetObjectRequest presignedRequest = presigner.presignGetObject(presignRequest);
-            System.out.println("Presigned URL: " + presignedRequest.url().toString());
-            System.out.println("HTTP method: " + presignedRequest.httpRequest().method());
+            log.debug("URL pré-assinada gerada com sucesso para: {}", objectKey);
 
             return presignedRequest.url().toExternalForm();
+        } catch (Exception e) {
+            log.error("Erro ao gerar URL pré-assinada para {}: {}", objectKey, e.getMessage());
+            return null;
         }
     }
 
