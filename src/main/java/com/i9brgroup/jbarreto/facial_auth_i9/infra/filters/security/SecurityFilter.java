@@ -53,7 +53,7 @@ public class SecurityFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext().setAuthentication(authentication);
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             var userPrincipal = (UserLoginEntity) auth.getPrincipal();
-            System.out.println("Roles do usuario: " + userPrincipal.getUsername() + " " + userPrincipal.getRoles());
+            System.out.println("Roles do usuario: " + userPrincipal.getUsername() + " " + userPrincipal.getRole());
         } else {
             logger.trace("No JWT token found in request {} {}", method, uri);
         }
