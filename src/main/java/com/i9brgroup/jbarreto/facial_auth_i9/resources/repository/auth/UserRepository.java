@@ -11,12 +11,4 @@ import org.springframework.security.core.userdetails.UserDetails;
 public interface UserRepository extends JpaRepository<UserLoginEntity, Long> {
     UserDetails findByEmail(String email);
     boolean existsByEmail(String email);
-    @Modifying
-    @Transactional
-    @Query("UPDATE UserLoginEntity u SET u.photo = :photoKeyS3 WHERE u.id = :id")
-    void updatePhotoKeyS3ByID(@Param("id") String id, @Param("photoKeyS3") String photoKeyS3);
-    @Modifying
-    @Transactional
-    @Query("UPDATE UserLoginEntity u SET u.photo = NULL WHERE u.id = :id")
-    boolean rollbackPhotoKeyS3ByID(@Param("id") String id);
 }

@@ -45,10 +45,10 @@ public class EmployeeController {
         return ResponseEntity.ok(page);
     }
 
-    @GetMapping("/search-employees/{localId}")
+    @GetMapping("/search-employees/{id}")
     public ResponseEntity<EmployeeSearchResponse> searchEmployees(
-            @PathVariable String localId) {
-        var employees = employeeService.buscarPorIdOuNome(localId);
+            @PathVariable String id) {
+        var employees = employeeService.buscarPorId(id);
         return ResponseEntity.ok(employees);
     }
 

@@ -14,7 +14,7 @@ import java.util.List;
 
 public interface EmployeeService {
     Page<EmployeeDatasResponse> buscarTodosFuncionarios(Pageable pageable);
-    EmployeeSearchResponse buscarPorIdOuNome(String localId);
+    EmployeeSearchResponse buscarPorId(String localId);
     ProcessPayloadResponse processPayload(EmployeePayloadPythonRequest payload, MultipartFile file);
     ProcessPayloadResponse sendPayloadToPythonService(EmployeePayloadPythonRequest payload, String url) throws ClosedChannelException;
 }

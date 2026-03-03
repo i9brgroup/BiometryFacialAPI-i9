@@ -17,7 +17,10 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.net.URL;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -73,20 +76,31 @@ public class S3Service {
         }
     }
 
+    private boolean validateImage(String imageUrl) {
+        try {
+            BufferedImage image = ImageIO.read(new URL(imageUrl));
+            return image != null;
+        } catch (IOException e) {
+            log.error("Erro ao validar imagem: {}", imageUrl);
+            return false;
+        }
+    }
+
     public String getPreSignedUrl(String keyName) {
         String cacheUrl = urlCache.getIfPresent(keyName);
-        if (cacheUrl != null) {
+        if (cacheUrl != null && validateImage(cacheUrl)) {
             log.debug("[CACHE HIT] URL recuperada para: {}", keyName);
             return cacheUrl;
         }
 
         log.info("[CACHE MISS] Gerando nova URL no S3 para: {}", keyName);
         String newUrl = generatedPreSignedUrlForPhotosEmployees(keyName);
-        if (newUrl != null) {
+        if (newUrl != null && validateImage(newUrl)) {
             urlCache.put(keyName, newUrl);
             log.debug("[CACHE ADDED] URL adicionada para: {}", keyName);
+            return newUrl;
         }
-        return newUrl;
+        return null;
     }
 
     public boolean uploadFile(MultipartFile multipartFile, String keyName) {
