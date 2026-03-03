@@ -17,5 +17,6 @@ public interface EmployeeRepository extends JpaRepository<Employee, String> {
 
     @Query("SELECT e FROM Employee e WHERE e.localId = :searchTerm OR LOWER(e.firstName) LIKE LOWER(CONCAT( :searchTerm, '%'))")
     Page<Employee> searchByIdOrName(@Param("searchTerm") String searchTerm, Pageable pageable);
-    Employee findByLocalId(String localId);
+    @Query("SELECT e FROM Employee e WHERE e.id = :localId AND e.siteId = :siteId")
+    Employee findEmployeeById(@Param("localId") String id, String siteId);
 }

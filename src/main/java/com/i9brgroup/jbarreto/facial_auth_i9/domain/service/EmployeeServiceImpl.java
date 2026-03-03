@@ -2,8 +2,11 @@ package com.i9brgroup.jbarreto.facial_auth_i9.domain.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.ObjetoS3;
+import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.UserLoginEntity;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.employee.Employee;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.EmployeeService;
+import com.i9brgroup.jbarreto.facial_auth_i9.infra.exception.model.dto.ObjetoS3NotFoundException;
 import com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.auth.UserRepository;
 import com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.employee.EmployeeRepository;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.request.EmployeePayloadPythonRequest;
@@ -21,6 +24,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -46,14 +50,19 @@ public class EmployeeServiceImpl implements EmployeeService {
     private String API_KEY;
     @Value("${api.service.python.base_url}")
     private String BASE_URL_PYTHON;
-    private Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    private final ObjetoS3ServiceImpl objetoS3Service;
 
     @Autowired
-    public EmployeeServiceImpl(EmployeeRepository employeeRepository, S3Service s3Service, ObjectMapper objectMapper, HttpClient httpClient) {
+    public EmployeeServiceImpl(EmployeeRepository employeeRepository, S3Service s3Service, ObjectMapper objectMapper, HttpClient httpClient, ObjetoS3ServiceImpl objetoS3Service) {
         this.httpClient = httpClient;
         this.s3Service = s3Service;
         this.employeeRepository = employeeRepository;
         this.objectMapper = objectMapper;
+        this.objetoS3Service = objetoS3Service;
+    }
+
+    private Authentication getAuthentication() {
+        return SecurityContextHolder.getContext().getAuthentication();
     }
 
     @Override
@@ -63,55 +72,76 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
-    public EmployeeSearchResponse buscarPorIdOuNome(String localId) {
-        log.info("Login do usuário {} iniciou a busca por funcionário com localId: {}", auth != null ? auth.getName() : "Desconecido", localId);
-        var employee = employeeRepository.findByLocalId(localId);
-        if (employee != null){
-            var nameNormalized = employee.getName().toLowerCase().replaceAll(" ", "_");
-            String extension = ""; // Se não tiver a extensão no banco, ou se for padrão .jpg
+    public EmployeeSearchResponse buscarPorId(String id) {
+        UserLoginEntity auth = (UserLoginEntity) getAuthentication().getPrincipal();
+        log.info("Login do usuário {} iniciou a busca por funcionário com localId: {}", auth != null ? auth.getUsername() : "Desconhecido", id);
+        var employee = employeeRepository.findEmployeeById(id, auth.getSiteId());
 
-            String s3Key = employee.getSiteId() + "_" + employee.getLocalId() + "_" + nameNormalized + extension;
-            String presignedUrl = s3Service.getPreSignedUrl(s3Key);
-
-            return new EmployeeSearchResponse(employee, presignedUrl);
+        if (employee == null) {
+            log.error("Funcionário não encontrado com o localId: {} ", id);
+            throw new UsernameNotFoundException("Funcionário não encontrado com o localId: " + id);
         }
-        log.error("Funcionário não encontrado com o localId: {} ", localId);
-        throw new UsernameNotFoundException("Funcionário não encontrado com o localId: " + localId);
+
+        var s3Key = objetoS3Service.findById(employee.getId());
+        String presignedUrl = null;
+
+        if (s3Key != null){
+            log.debug("Gerando URL pré-assinada para chave S3: {}", s3Key);
+            presignedUrl = s3Service.getPreSignedUrl(s3Key);
+        } else {
+            log.warn("Nenhum objeto S3 encontrado para o funcionário com localId: {}. O funcionário será retornado sem URL pré-assinada.", id);
+        }
+
+        return new EmployeeSearchResponse(employee, presignedUrl);
+    }
+
+    protected String criaS3Key(String nome, String siteId, String localId, MultipartFile file){
+        var nameNormalized = nome.toLowerCase().replaceAll(" ", "_");
+        String extension = "";
+
+        int i = file.getOriginalFilename().lastIndexOf('.');
+        if (i > 0) {
+            extension = file.getOriginalFilename().substring(i);
+        }
+
+        return siteId + "_" + localId + "_" + nameNormalized + extension;
     }
 
     @Override
     public ProcessPayloadResponse processPayload(EmployeePayloadPythonRequest payload, MultipartFile file) {
         String sendPayloadURL = BASE_URL_PYTHON + "employee/payload";
+        UserLoginEntity auth = (UserLoginEntity) getAuthentication().getPrincipal();
 
         if (auth != null) {
-            log.info("Usuario {} iniciou o processamento do payload do funcionário: {}", auth.getName(), payload.name());
+            log.info("Usuario {} iniciou o processamento do payload do funcionário: {}", auth.getUsername(), payload.name());
         }
 
         if (file.isEmpty()) {
-            log.error("Arquivo de foto vazio recebido pela usuario {} para o funcionário {}. ", auth != null ? auth.getName() : "Desconecido", payload.name());
+            log.error("Arquivo de foto vazio recebido pela usuario {} para o funcionário {}. ", auth != null ? auth.getUsername() : "Desconhecido", payload.name());
             throw new RuntimeException("File is empty");
         }
 
+        var employee = employeeRepository.findEmployeeById(payload.localId(), auth.getSiteId());
+        if (employee == null) {
+            log.error("Funcionário não encontrado com o id: {} para processar payload.", payload.localId());
+            throw new UsernameNotFoundException("Funcionário não encontrado com o localId: " + payload.localId());
+        }
+
         try {
-            var originalFileName = file.getOriginalFilename();
-            var nameNormalized = payload.name().toLowerCase().replaceAll(" ", "_");
-            String extension = "";
-
-            int i = file.getOriginalFilename().lastIndexOf('.');
-            if (i > 0) {
-                extension = file.getOriginalFilename().substring(i);
-            }
-
-            String s3Key = payload.siteId() + "_" + payload.localId() + "_" + nameNormalized + extension;
+            var s3Key = criaS3Key(payload.name(), payload.siteId(), payload.localId(), file);
 
 
             var s3Response = s3Service.uploadFile(file, s3Key);
+            // Nesse ponto salvamos o nome da foto e a extensao juntamente com o ID do usuario.
+            var objetoS3 = new ObjetoS3(employee.getId(), s3Key);
 
-            if (s3Response) {
-                log.info("Arquivo {} enviado com sucesso para o S3 com a chave {}", originalFileName, s3Key);
+            var ifObjetoSalvo = objetoS3Service.save(objetoS3);
+
+            if (s3Response && ifObjetoSalvo != null) {
+                log.info("Arquivo enviado com sucesso para o S3 com a chave {}", s3Key);
                 var presignedURL = s3Service.generatedPreSignedUrlForPhotosEmployees(s3Key);
                 payload = new EmployeePayloadPythonRequest(
-                        payload.id(),
+                        employee.getId(),
                         payload.name(),
                         payload.email(),
                         payload.siteId(),
@@ -134,6 +164,9 @@ public class EmployeeServiceImpl implements EmployeeService {
         } catch (ClosedChannelException closedChannelException) {
             log.error("Conexão encerrada abruptamente ao processar payload: {}", closedChannelException.getMessage());
             throw new RuntimeException("Erro no processamento do funcionário", closedChannelException);
+        } catch (ObjetoS3NotFoundException objetoS3NotFoundException) {
+            log.error("Objeto S3 não encontrado para o funcionário {}: {}", payload.name(), objetoS3NotFoundException.getMessage());
+            throw new RuntimeException("Erro no processamento do funcionário: Objeto S3 não encontrado", objetoS3NotFoundException);
         } catch (Exception e) {
             log.error("Erro ao processar payload: {}", e.getMessage());
             throw new RuntimeException("Erro no processamento do funcionário", e);

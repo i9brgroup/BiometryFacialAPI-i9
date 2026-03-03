@@ -6,6 +6,7 @@ import jakarta.persistence.PersistenceContext;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
 import org.hibernate.Session;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.security.core.Authentication;
@@ -37,9 +38,19 @@ public class UserFilterAspect {
         if (auth.getPrincipal() instanceof UserLoginEntity) {
             UserLoginEntity user = (UserLoginEntity) auth.getPrincipal();
             System.out.println("=== APLICANDO FILTRO PARA SITE ID: " + user.getSiteId() + " ===");
-            Session session = entityManager.unwrap(Session.class);
-            session.enableFilter("tenantFilter").setParameter("siteId", user.getSiteId());
-            System.out.println("=== FILTRO APLICADO COM SUCESSO ===");
+            
+            try {
+                Session session = entityManager.unwrap(Session.class);
+                session.enableFilter("tenantFilter").setParameter("siteId", user.getSiteId());
+                System.out.println("=== FILTRO APLICADO COM SUCESSO NO ENTITY MANAGER: " + entityManager + " PARA O SITE: " + user.getSiteId() + " ===");
+                // Forçar o flush ou verificar se a sessão está aberta
+                if (!session.isOpen()) {
+                    System.err.println("=== SESSÃO DO HIBERNATE FECHADA NO ASPECT! ===");
+                }
+            } catch (Exception e) {
+                System.err.println("=== ERRO AO APLICAR FILTRO ASPECT: " + e.getMessage() + " ===");
+                e.printStackTrace();
+            }
         }
     }
 }

@@ -21,7 +21,7 @@ import org.hibernate.annotations.ParamDef;
 @AllArgsConstructor
 @NoArgsConstructor
 @FilterDef(name = "tenantFilter", parameters = @ParamDef(name = "siteId", type = String.class))
-@Filter(name = "tenantFilter", condition = "EmployeeSiteID = :siteId")
+@Filter(name = "tenantFilter", condition = "[EmployeeSiteID] = :siteId")
 public class Employee {
 
     @Column(name = "[ID]")
