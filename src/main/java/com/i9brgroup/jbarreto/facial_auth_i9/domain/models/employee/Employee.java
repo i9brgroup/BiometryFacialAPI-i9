@@ -37,8 +37,16 @@ public class Employee {
     private String siteId;
     @Column(name = "[EmployeeLocalID]")
     private String localId;
-    @Column(name = "[FingerPrintTemplate]")
+    @Column(name = "[BadgeNumber]")
+    private String badgeNumber;
+    @Column(name = "[FingerPrintTemplate]", columnDefinition = "VARBINARY")
     private String faceTemplate;
+
+    public Employee(String id, String name, String faceTemplate) {
+        this.id = id;
+        this.firstName = name;
+        this.faceTemplate = faceTemplate;
+    }
 
     public String getName() {
         return (firstName != null ? firstName : "") + (lastName != null ? " " + lastName : "");

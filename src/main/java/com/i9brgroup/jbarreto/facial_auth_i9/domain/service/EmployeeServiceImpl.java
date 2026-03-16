@@ -1,19 +1,16 @@
 package com.i9brgroup.jbarreto.facial_auth_i9.domain.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.ObjetoS3;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.UserLoginEntity;
-import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.employee.Employee;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.EmployeeService;
-import com.i9brgroup.jbarreto.facial_auth_i9.infra.exception.model.dto.ObjetoS3NotFoundException;
-import com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.auth.UserRepository;
+import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.ObjetoS3Service;
 import com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.employee.EmployeeRepository;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.request.EmployeePayloadPythonRequest;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.EmployeeDatasResponse;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.EmployeeSearchResponse;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.ProcessPayloadResponse;
-import com.i9brgroup.jbarreto.facial_auth_i9.web.sdk.aws.S3Service;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.aws.S3Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,19 +21,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.channels.ClosedChannelException;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class EmployeeServiceImpl implements EmployeeService {
@@ -50,10 +42,10 @@ public class EmployeeServiceImpl implements EmployeeService {
     private String API_KEY;
     @Value("${api.service.python.base_url}")
     private String BASE_URL_PYTHON;
-    private final ObjetoS3ServiceImpl objetoS3Service;
+    private final ObjetoS3Service objetoS3Service;
 
     @Autowired
-    public EmployeeServiceImpl(EmployeeRepository employeeRepository, S3Service s3Service, ObjectMapper objectMapper, HttpClient httpClient, ObjetoS3ServiceImpl objetoS3Service) {
+    public EmployeeServiceImpl(EmployeeRepository employeeRepository, S3Service s3Service, ObjectMapper objectMapper, HttpClient httpClient, ObjetoS3Service objetoS3Service) {
         this.httpClient = httpClient;
         this.s3Service = s3Service;
         this.employeeRepository = employeeRepository;
@@ -85,7 +77,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         var s3Key = objetoS3Service.findById(employee.getId());
         String presignedUrl = null;
 
-        if (s3Key != null){
+        if (s3Key != null) {
             log.debug("Gerando URL pré-assinada para chave S3: {}", s3Key);
             presignedUrl = s3Service.getPreSignedUrl(s3Key);
         } else {
@@ -95,7 +87,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         return new EmployeeSearchResponse(employee, presignedUrl);
     }
 
-    protected String criaS3Key(String nome, String siteId, String localId, MultipartFile file){
+    protected String criaS3Key(String nome, String siteId, String localId, MultipartFile file) {
         var nameNormalized = nome.toLowerCase().replaceAll(" ", "_");
         String extension = "";
 
@@ -111,6 +103,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     public ProcessPayloadResponse processPayload(EmployeePayloadPythonRequest payload, MultipartFile file) {
         String sendPayloadURL = BASE_URL_PYTHON + "employee/payload";
         UserLoginEntity auth = (UserLoginEntity) getAuthentication().getPrincipal();
+        String s3Key = null;
 
         if (auth != null) {
             log.info("Usuario {} iniciou o processamento do payload do funcionário: {}", auth.getUsername(), payload.name());
@@ -121,25 +114,26 @@ public class EmployeeServiceImpl implements EmployeeService {
             throw new RuntimeException("File is empty");
         }
 
-        var employee = employeeRepository.findEmployeeById(payload.localId(), auth.getSiteId());
+        var employee = employeeRepository.findEmployeeById(payload.id(), auth.getSiteId());
+
         if (employee == null) {
-            log.error("Funcionário não encontrado com o id: {} para processar payload.", payload.localId());
-            throw new UsernameNotFoundException("Funcionário não encontrado com o localId: " + payload.localId());
+            log.error("Funcionário não encontrado com o id: {} para processar payload.", payload.id());
+            throw new UsernameNotFoundException("Funcionário não encontrado com o localId: " + payload.id());
         }
 
         try {
-            var s3Key = criaS3Key(payload.name(), payload.siteId(), payload.localId(), file);
+            s3Key = criaS3Key(payload.name(), payload.siteId(), payload.localId(), file);
 
 
             var s3Response = s3Service.uploadFile(file, s3Key);
             // Nesse ponto salvamos o nome da foto e a extensao juntamente com o ID do usuario.
             var objetoS3 = new ObjetoS3(employee.getId(), s3Key);
 
-            var ifObjetoSalvo = objetoS3Service.save(objetoS3);
+            var objetoS3Salvo = objetoS3Service.save(objetoS3);
 
-            if (s3Response && ifObjetoSalvo != null) {
-                log.info("Arquivo enviado com sucesso para o S3 com a chave {}", s3Key);
-                var presignedURL = s3Service.generatedPreSignedUrlForPhotosEmployees(s3Key);
+            if (s3Response && objetoS3Salvo != null) {
+                log.info("Arquivo enviado com sucesso para o S3 com a chave {}", objetoS3Salvo.getNomeArquivoS3());
+                var presignedURL = s3Service.generatedPreSignedUrlForPhotosEmployees(objetoS3Salvo.getNomeArquivoS3());
                 payload = new EmployeePayloadPythonRequest(
                         employee.getId(),
                         payload.name(),
@@ -156,26 +150,21 @@ public class EmployeeServiceImpl implements EmployeeService {
                     return new ProcessPayloadResponse(
                             paylaodResponse.status()
                     );
-                } else {
-                    log.error("Payload não aceito pelo serviço Python. Status: {}", paylaodResponse.status());
-                    throw new RuntimeException("Payload não aceito pelo serviço Python");
                 }
             }
-        } catch (ClosedChannelException closedChannelException) {
-            log.error("Conexão encerrada abruptamente ao processar payload: {}", closedChannelException.getMessage());
-            throw new RuntimeException("Erro no processamento do funcionário", closedChannelException);
-        } catch (ObjetoS3NotFoundException objetoS3NotFoundException) {
-            log.error("Objeto S3 não encontrado para o funcionário {}: {}", payload.name(), objetoS3NotFoundException.getMessage());
-            throw new RuntimeException("Erro no processamento do funcionário: Objeto S3 não encontrado", objetoS3NotFoundException);
+
         } catch (Exception e) {
-            log.error("Erro ao processar payload: {}", e.getMessage());
+            if (s3Key != null) {
+               log.error("Iniciando Rollback do S3 para a chave: {}", s3Key);
+               s3Service.executaRollback(s3Key);
+            }
             throw new RuntimeException("Erro no processamento do funcionário", e);
         }
-        throw new RuntimeException("Erro desconhecido no processamento do funcionário");
+        throw new RuntimeException("Erro no processamento do funcionário: Falha ao enviar o payload para o serviço Python");
     }
 
     @Override
-    public ProcessPayloadResponse sendPayloadToPythonService(EmployeePayloadPythonRequest payload, String url) throws ClosedChannelException {
+    public ProcessPayloadResponse sendPayloadToPythonService(EmployeePayloadPythonRequest payload, String url){
         try {
             String jsonBody = objectMapper.writeValueAsString(payload);
 
@@ -194,6 +183,12 @@ public class EmployeeServiceImpl implements EmployeeService {
             if (response.statusCode() != 200) {
                 log.error("Erro ao enviar payload para Python. Status: {} Body: {}",
                         response.statusCode(), response.body());
+                var keyPhotoDatabase = objetoS3Service.findById(payload.id());
+                var deleteFile = s3Service.deleteFile(payload.photoKey());
+
+                if (keyPhotoDatabase != null && deleteFile) {
+                    log.info("Rollback realizado: Arquivo {} removido do S3 após resposta de erro do python. ", payload.photoKey());
+                }
                 throw new RuntimeException("Falha na integração com serviço Python: " + response.statusCode());
             }
 
@@ -201,28 +196,9 @@ public class EmployeeServiceImpl implements EmployeeService {
 
             return objectMapper.readValue(response.body(), ProcessPayloadResponse.class);
 
-        } catch (JsonProcessingException e) {
-            log.error("Erro ao serializar payload para JSON: {}", e.getMessage());
-            var deleteFile = s3Service.deleteFile(payload.photoKey());
-            if (deleteFile) {
-                log.info("Rollback realizado: Arquivo {} removido do S3 após erro de serialização. ", payload.photoKey());
-            }
-            throw new RuntimeException("Erro de serialização do payload", e);
-        } catch (ClosedChannelException e) {
-            log.error("Conexão encerrada abruptamente. O serviço Python pode estar offline ou reiniciando. ", e);
-            var deleteFile = s3Service.deleteFile(payload.photoKey());
-            if (deleteFile) {
-                log.info("Rollback realizado: Arquivo {} removido do S3 após erro de conexao fechada pelo python. ", payload.photoKey());
-            }
-            throw new ClosedChannelException();
-        } catch (IOException | InterruptedException e) {
-            log.error("Erro na comunicação com o serviço Python: {}", e.getMessage());
-            var deleteFile = s3Service.deleteFile(payload.photoKey());
-            if (deleteFile) {
-                log.info("Rollback realizado: Arquivo {} removido do S3 após erro de comunicacao - IOException. ", payload.photoKey());
-            }
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Erro de rede ao comunicar com serviço Python", e);
+        } catch (Exception e) {
+            log.error("Erro ao enviar payload para o serviço python: {}", e.getMessage());
+            throw new RuntimeException("Erro ao enviar payload para serviço python: ", e);
         }
     }
 }

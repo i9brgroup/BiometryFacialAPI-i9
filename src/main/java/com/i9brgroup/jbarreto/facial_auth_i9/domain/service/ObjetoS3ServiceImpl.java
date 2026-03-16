@@ -31,4 +31,16 @@ public class ObjetoS3ServiceImpl implements ObjetoS3Service {
          }
             return objeto.get().getNomeArquivoS3();
     }
+
+    @Override
+    public boolean deleteObject(String nomeObjeto) {
+        var objeto = objetoS3Repository.findByNomeArquivoS3(nomeObjeto);
+
+        if(objeto != null){
+            objetoS3Repository.deleteById(objeto.getId());
+            return true;
+        }
+
+        return false;
+    }
 }

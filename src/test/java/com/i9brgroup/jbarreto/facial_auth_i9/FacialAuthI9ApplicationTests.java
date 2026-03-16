@@ -8,6 +8,7 @@ class FacialAuthI9ApplicationTests {
 
 	@Test
 	void contextLoads() {
+
 	}
 
 }
