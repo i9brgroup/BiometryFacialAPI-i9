@@ -10,4 +10,5 @@ import java.util.List;
 public interface UserLoginService {
     UserLoginEntity createNew(UserLoginRequest userLoginRequest);
     List<UserLoginEntity> getAllUsers();
+    boolean deleteById(Long id);
 }

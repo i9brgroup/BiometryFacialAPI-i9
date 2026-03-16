@@ -2,15 +2,13 @@ package com.i9brgroup.jbarreto.facial_auth_i9.domain.service;
 
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.UserLoginEntity;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.UserLoginService;
-import com.i9brgroup.jbarreto.facial_auth_i9.infra.exception.model.dto.InvalidCredentialsException;
-import com.i9brgroup.jbarreto.facial_auth_i9.infra.security.service.TokenService;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.InvalidCredentialsException;
 import com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.auth.UserRepository;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.request.AuthenticationDataRequest;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.request.UserLoginRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -62,6 +60,11 @@ public class UserServiceImpl implements UserLoginService {
     @Override
     public List<UserLoginEntity> getAllUsers() {
         return userRepository.findAll();
+    }
+
+    @Override
+    public boolean deleteById(Long id) {
+        return false;
     }
 
     public String login(AuthenticationDataRequest userDataDTO){
