@@ -1,7 +1,8 @@
-package com.i9brgroup.jbarreto.facial_auth_i9.web.sdk.aws;
+package com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.aws;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.ObjetoS3Service;
 import org.apache.tika.Tika;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,8 +32,10 @@ public class S3Service {
     private final S3Credentials s3Credentials;
     private static final Logger log = LoggerFactory.getLogger(S3Service.class);
     private final Tika tika = new Tika();
+    private final ObjetoS3Service objetoS3Service;
 
-    public S3Service(S3Credentials s3Credentials) {
+    public S3Service(S3Credentials s3Credentials, ObjetoS3Service objetoS3Service) {
+        this.objetoS3Service = objetoS3Service;
         this.s3Credentials = s3Credentials;
     }
 
@@ -175,10 +178,11 @@ public class S3Service {
         try {
             DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
                     .bucket(s3Credentials.getBucketName())
-                    .key("photos/" + key)
+                    .key(key)
                     .build();
 
             var response = s3Client().deleteObject(deleteObjectRequest);
+
             if (response.sdkHttpResponse().isSuccessful()) {
                 log.info("Rollback realizado: Arquivo {} removido do S3.", key);
             }
@@ -195,5 +199,20 @@ public class S3Service {
 
         List<String> allowedTypes = List.of("image/jpeg", "image/png", "image/jpg");
         return allowedTypes.contains(detectedType);
+    }
+
+    public void executaRollback(String key) {
+        boolean s3Delelte = deleteFile("photos/" + key);
+        boolean dbDelete = objetoS3Service.deleteObject(key);
+
+        if (s3Delelte && dbDelete) {
+            log.info("Rollback completo: Arquivo {} removido do S3 e registro deletado do banco de dados.", key);
+        } else if (!s3Delelte && !dbDelete) {
+            log.error("FALHA CRÍTICA NO ROLLBACK: Não foi possível deletar o arquivo {} do S3 e nem remover o registro do banco de dados.", key);
+        } else if (!s3Delelte) {
+            log.error("FALHA CRÍTICA NO ROLLBACK: Não foi possível deletar o arquivo {} do S3, mas o registro do banco de dados foi removido.", key);
+        } else {
+            log.error("FALHA CRÍTICA NO ROLLBACK: O arquivo {} foi deletado do S3, mas não foi possível remover o registro do banco de dados.", key);
+        }
     }
 }

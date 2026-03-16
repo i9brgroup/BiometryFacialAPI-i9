@@ -1,4 +1,4 @@
-package com.i9brgroup.jbarreto.facial_auth_i9.infra.security.config;
+package com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;

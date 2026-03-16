@@ -1,6 +1,6 @@
-package com.i9brgroup.jbarreto.facial_auth_i9.infra.security.config;
+package com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.config;
 
-import com.i9brgroup.jbarreto.facial_auth_i9.infra.filters.security.SecurityFilter;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.filters.security.SecurityFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -45,6 +45,7 @@ public class SecurityConfiguration {
                 .httpBasic(Customizer.withDefaults())
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/templates/**", "/api/v1/templates/get-all/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)

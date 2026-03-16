@@ -1,4 +1,4 @@
-package com.i9brgroup.jbarreto.facial_auth_i9.infra.config;
+package com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.config;
 
 import jakarta.persistence.EntityManagerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;

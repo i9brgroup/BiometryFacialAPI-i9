@@ -1,4 +1,4 @@
-package com.i9brgroup.jbarreto.facial_auth_i9.infra.security.service;
+package com.i9brgroup.jbarreto.facial_auth_i9.domain.service;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;

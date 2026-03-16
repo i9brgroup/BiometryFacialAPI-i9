@@ -1,4 +1,4 @@
-package com.i9brgroup.jbarreto.facial_auth_i9.infra.filters.aspect;
+package com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.filters.aspect;
 
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.UserLoginEntity;
 import jakarta.persistence.EntityManager;
@@ -6,8 +6,6 @@ import jakarta.persistence.PersistenceContext;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
 import org.hibernate.Session;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;

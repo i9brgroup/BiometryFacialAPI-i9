@@ -1,4 +1,4 @@
-package com.i9brgroup.jbarreto.facial_auth_i9.infra.exception.model.dto;
+package com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model;
 
 public class InvalidCredentialsException extends RuntimeException {
 

@@ -1,4 +1,4 @@
-package com.i9brgroup.jbarreto.facial_auth_i9.web.sdk.aws;
+package com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.aws;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;

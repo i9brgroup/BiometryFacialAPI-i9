@@ -1,7 +1,7 @@
-package com.i9brgroup.jbarreto.facial_auth_i9.infra.filters.security;
+package com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.filters.security;
 
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.UserLoginEntity;
-import com.i9brgroup.jbarreto.facial_auth_i9.infra.security.service.TokenService;
+import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.TokenService;
 import com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.auth.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -35,7 +35,7 @@ public class SecurityFilter extends OncePerRequestFilter {
         String uri = request.getRequestURI();
         String method = request.getMethod();
         // Skip the filter for POST /api/v1/auth/login
-        return "POST".equalsIgnoreCase(method) && uri != null && uri.endsWith("/api/v1/auth/login");
+        return "POST".equalsIgnoreCase(method) && uri != null && uri.endsWith("/api/v1/auth/login") || ("GET".equalsIgnoreCase(method) && (uri != null && (uri.endsWith("/api/v1/templates/get-all") || uri.matches("/api/v1/templates/\\d+"))));
     }
 
     @Override

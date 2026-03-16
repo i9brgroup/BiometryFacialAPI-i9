@@ -1,7 +1,8 @@
-package com.i9brgroup.jbarreto.facial_auth_i9.infra.exception;
+package com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions;
 
-import com.i9brgroup.jbarreto.facial_auth_i9.infra.exception.model.dto.ErrorResponse;
-import com.i9brgroup.jbarreto.facial_auth_i9.infra.exception.model.dto.InvalidCredentialsException;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.ErrorResponse;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.InvalidCredentialsException;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.TemplatesNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -65,5 +66,15 @@ public class GlobalExceptionHandler {
                 HttpStatus.UNAUTHORIZED.value()
         );
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
+    @ExceptionHandler(TemplatesNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleTemplatesNotFoundException(TemplatesNotFoundException ex){
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage(),
+                LocalDateTime.now().format(formatter),
+                HttpStatus.NOT_FOUND.value()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 }
