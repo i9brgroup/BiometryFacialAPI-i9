@@ -50,6 +50,11 @@ public class UserLoginEntity implements UserDetails {
         this.role = userLoginRequest.roles();
     }
 
+    public UserLoginEntity(String s, String site01) {
+        this.username = s;
+        this.siteId = site01;
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         if (this.role == null) return List.of();

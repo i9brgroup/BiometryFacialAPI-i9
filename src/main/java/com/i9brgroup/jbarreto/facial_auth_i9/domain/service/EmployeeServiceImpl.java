@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.ObjetoS3;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.UserLoginEntity;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.EmployeeService;
+import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.IAuthenticationFacade;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.ObjetoS3Service;
 import com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.employee.EmployeeRepository;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.request.EmployeePayloadPythonRequest;
@@ -11,16 +12,14 @@ import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.EmployeeDatasRespo
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.EmployeeSearchResponse;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.ProcessPayloadResponse;
 import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.aws.S3Service;
+import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -43,18 +42,15 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Value("${api.service.python.base_url}")
     private String BASE_URL_PYTHON;
     private final ObjetoS3Service objetoS3Service;
+    private final IAuthenticationFacade authenticationFacade;
 
-    @Autowired
-    public EmployeeServiceImpl(EmployeeRepository employeeRepository, S3Service s3Service, ObjectMapper objectMapper, HttpClient httpClient, ObjetoS3Service objetoS3Service) {
+    public EmployeeServiceImpl(IAuthenticationFacade authenticationFacade, EmployeeRepository employeeRepository, S3Service s3Service, ObjectMapper objectMapper, HttpClient httpClient, ObjetoS3Service objetoS3Service) {
+        this.authenticationFacade = authenticationFacade;
         this.httpClient = httpClient;
         this.s3Service = s3Service;
         this.employeeRepository = employeeRepository;
         this.objectMapper = objectMapper;
         this.objetoS3Service = objetoS3Service;
-    }
-
-    private Authentication getAuthentication() {
-        return SecurityContextHolder.getContext().getAuthentication();
     }
 
     @Override
@@ -65,13 +61,13 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     public EmployeeSearchResponse buscarPorId(String id) {
-        UserLoginEntity auth = (UserLoginEntity) getAuthentication().getPrincipal();
+        UserLoginEntity auth = authenticationFacade.getAuthentication();
         log.info("Login do usuário {} iniciou a busca por funcionário com localId: {}", auth != null ? auth.getUsername() : "Desconhecido", id);
         var employee = employeeRepository.findEmployeeById(id, auth.getSiteId());
 
         if (employee == null) {
             log.error("Funcionário não encontrado com o localId: {} ", id);
-            throw new UsernameNotFoundException("Funcionário não encontrado com o localId: " + id);
+            throw new EntityNotFoundException("Funcionário não encontrado com o localId: " + id);
         }
 
         var s3Key = objetoS3Service.findById(employee.getId());
@@ -102,7 +98,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     public ProcessPayloadResponse processPayload(EmployeePayloadPythonRequest payload, MultipartFile file) {
         String sendPayloadURL = BASE_URL_PYTHON + "employee/payload";
-        UserLoginEntity auth = (UserLoginEntity) getAuthentication().getPrincipal();
+        UserLoginEntity auth = authenticationFacade.getAuthentication();
         String s3Key = null;
 
         if (auth != null) {
@@ -118,7 +114,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         if (employee == null) {
             log.error("Funcionário não encontrado com o id: {} para processar payload.", payload.id());
-            throw new UsernameNotFoundException("Funcionário não encontrado com o localId: " + payload.id());
+            throw new EntityNotFoundException("Funcionário não encontrado com o localId: " + payload.id());
         }
 
         try {
@@ -127,36 +123,39 @@ public class EmployeeServiceImpl implements EmployeeService {
 
             var s3Response = s3Service.uploadFile(file, s3Key);
             // Nesse ponto salvamos o nome da foto e a extensao juntamente com o ID do usuario.
-            var objetoS3 = new ObjetoS3(employee.getId(), s3Key);
 
-            var objetoS3Salvo = objetoS3Service.save(objetoS3);
 
-            if (s3Response && objetoS3Salvo != null) {
-                log.info("Arquivo enviado com sucesso para o S3 com a chave {}", objetoS3Salvo.getNomeArquivoS3());
-                var presignedURL = s3Service.generatedPreSignedUrlForPhotosEmployees(objetoS3Salvo.getNomeArquivoS3());
-                payload = new EmployeePayloadPythonRequest(
-                        employee.getId(),
-                        payload.name(),
-                        payload.email(),
-                        payload.siteId(),
-                        payload.localId(),
-                        presignedURL
-                );
+            if (s3Response) {
+                var objetoS3 = new ObjetoS3(employee.getId(), s3Key);
+                var objetoS3Salvo = objetoS3Service.save(objetoS3);
 
-                var paylaodResponse = sendPayloadToPythonService(payload, sendPayloadURL);
-
-                if (paylaodResponse.status().equalsIgnoreCase("done")) {
-                    log.info("Payload enviado e processado com sucesso.");
-                    return new ProcessPayloadResponse(
-                            paylaodResponse.status()
+                if (objetoS3Salvo != null) {
+                    log.info("Arquivo enviado com sucesso para o S3 com a chave {}", objetoS3Salvo.getNomeArquivoS3());
+                    var presignedURL = s3Service.generatedPreSignedUrlForPhotosEmployees(objetoS3Salvo.getNomeArquivoS3());
+                    payload = new EmployeePayloadPythonRequest(
+                            employee.getId(),
+                            payload.name(),
+                            payload.email(),
+                            payload.siteId(),
+                            payload.localId(),
+                            presignedURL
                     );
+
+                    var paylaodResponse = sendPayloadToPythonService(payload, sendPayloadURL);
+
+                    if (paylaodResponse.status().equalsIgnoreCase("done")) {
+                        log.info("Payload enviado e processado com sucesso.");
+                        return new ProcessPayloadResponse(
+                                paylaodResponse.status()
+                        );
+                    }
                 }
             }
 
         } catch (Exception e) {
             if (s3Key != null) {
-               log.error("Iniciando Rollback do S3 para a chave: {}", s3Key);
-               s3Service.executaRollback(s3Key);
+                log.error("Iniciando Rollback do S3 para a chave: {}", s3Key);
+                s3Service.executaRollback(s3Key);
             }
             throw new RuntimeException("Erro no processamento do funcionário", e);
         }
@@ -164,7 +163,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
-    public ProcessPayloadResponse sendPayloadToPythonService(EmployeePayloadPythonRequest payload, String url){
+    public ProcessPayloadResponse sendPayloadToPythonService(EmployeePayloadPythonRequest payload, String url) {
         try {
             String jsonBody = objectMapper.writeValueAsString(payload);
 
