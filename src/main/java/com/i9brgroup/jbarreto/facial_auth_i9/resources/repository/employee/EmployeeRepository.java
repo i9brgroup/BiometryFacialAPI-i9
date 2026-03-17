@@ -13,12 +13,6 @@ import java.util.List;
 import java.util.Set;
 
 public interface EmployeeRepository extends JpaRepository<Employee, String> {
-
-    @Query("SELECT e FROM Employee e WHERE e.id = :searchTerm OR LOWER(e.firstName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR LOWER(e.lastName) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
-    List<Employee> findByFirstNameOrLastNameContainingIgnoreCase(@Param("searchTerm") String searchTerm);
-
-    @Query("SELECT e FROM Employee e WHERE e.localId = :searchTerm OR LOWER(e.firstName) LIKE LOWER(CONCAT( :searchTerm, '%'))")
-    Page<Employee> searchByIdOrName(@Param("searchTerm") String searchTerm, Pageable pageable);
     @Query("SELECT e FROM Employee e WHERE e.id = :id AND e.siteId = :siteId")
     Employee findEmployeeById(@Param("id") String id, String siteId);
 
