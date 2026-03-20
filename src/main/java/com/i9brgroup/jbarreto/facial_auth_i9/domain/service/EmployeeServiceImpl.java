@@ -85,11 +85,19 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     protected String criaS3Key(String nome, String siteId, String localId, MultipartFile file) {
         var nameNormalized = nome.toLowerCase().replaceAll(" ", "_");
-        String extension = "";
+        String originalName = file.getOriginalFilename();
 
-        int i = file.getOriginalFilename().lastIndexOf('.');
-        if (i > 0) {
-            extension = file.getOriginalFilename().substring(i);
+        // Se o nome original contém '?', corta tudo que vem depois (limpa parâmetros de URL)
+        if (originalName != null && originalName.contains("?")) {
+            originalName = originalName.substring(0, originalName.indexOf("?"));
+        }
+
+        String extension = "";
+        if (originalName != null) {
+            int i = originalName.lastIndexOf('.');
+            if (i > 0) {
+                extension = originalName.substring(i);
+            }
         }
 
         return siteId + "_" + localId + "_" + nameNormalized + extension;
@@ -120,12 +128,11 @@ public class EmployeeServiceImpl implements EmployeeService {
         try {
             s3Key = criaS3Key(payload.name(), payload.siteId(), payload.localId(), file);
 
-
             var s3Response = s3Service.uploadFile(file, s3Key);
             // Nesse ponto salvamos o nome da foto e a extensao juntamente com o ID do usuario.
 
-
             if (s3Response) {
+                log.error("VALOR DA CHAVE DO S3 PARA DEBUGAR {}", s3Key);
                 var objetoS3 = new ObjetoS3(employee.getId(), s3Key);
                 var objetoS3Salvo = objetoS3Service.save(objetoS3);
 
