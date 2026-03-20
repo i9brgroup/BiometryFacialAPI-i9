@@ -35,7 +35,7 @@ public class SecurityFilter extends OncePerRequestFilter {
         String uri = request.getRequestURI();
         String method = request.getMethod();
         // Skip the filter for POST /api/v1/auth/login
-        return "POST".equalsIgnoreCase(method) && uri != null && uri.endsWith("/api/v1/auth/login") || ("GET".equalsIgnoreCase(method) && (uri != null && (uri.endsWith("/api/v1/templates/get-all") || uri.matches("/api/v1/templates/\\d+"))));
+        return "POST".equalsIgnoreCase(method) && uri != null && uri.endsWith("/api/v1/auth/login");
     }
 
     @Override
