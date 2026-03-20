@@ -1,9 +1,11 @@
 package com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.aws;
 
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
+@Getter
 public class S3Credentials {
 
     private final String accessKey;
@@ -22,18 +24,5 @@ public class S3Credentials {
         this.secretKey = secretKey;
         this.region = region;
         this.bucketName = "i9-biometric-images";
-    }
-
-    public String getAccessKey() {
-        return accessKey;
-    }
-    public String getSecretKey() {
-        return secretKey;
-    }
-    public String getRegion() {
-        return region;
-    }
-    public String getBucketName() {
-        return bucketName;
     }
 }
