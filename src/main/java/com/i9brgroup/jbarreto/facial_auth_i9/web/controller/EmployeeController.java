@@ -6,6 +6,7 @@ import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.EmployeeS
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.request.EmployeePayloadPythonRequest;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.EmployeeDatasResponse;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.EmployeeSearchResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -34,8 +35,8 @@ public class EmployeeController {
     }
 
     @GetMapping("/health")
-    public String checkHealth() {
-        return "API Esta funcionando";
+    public String checkHealth(HttpServletRequest request) {
+        return "API Esta funcionando. IP Real do cliente: " + request.getRemoteAddr();
     }
 
     @GetMapping("/list-employees")
