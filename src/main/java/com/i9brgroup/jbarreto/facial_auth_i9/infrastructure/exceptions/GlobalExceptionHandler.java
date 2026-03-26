@@ -1,6 +1,7 @@
 package com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions;
 
 import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.ErrorResponse;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.HaarCascadeException;
 import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.InvalidCredentialsException;
 import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.TemplatesNotFoundException;
 import jakarta.persistence.EntityNotFoundException;
@@ -100,5 +101,15 @@ public class GlobalExceptionHandler {
                 HttpStatus.UNAUTHORIZED.value()
         );
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
+    @ExceptionHandler(HaarCascadeException.class)
+    public ResponseEntity<ErrorResponse> handleHaarCascadeException(HaarCascadeException ex) {
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage(),
+                LocalDateTime.now().format(formatter),
+                HttpStatus.INTERNAL_SERVER_ERROR.value()
+        );
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 }
