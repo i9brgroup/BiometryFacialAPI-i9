@@ -3,24 +3,28 @@ package com.i9brgroup.jbarreto.facial_auth_i9.domain.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.ObjetoS3;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.UserLoginEntity;
+import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.face.HaarFaceDetectorService;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.EmployeeService;
+import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.FaceDetectorService;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.IAuthenticationFacade;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.ObjetoS3Service;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.aws.S3Service;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.HaarCascadeException;
 import com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.employee.EmployeeRepository;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.request.EmployeePayloadPythonRequest;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.EmployeeDatasResponse;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.EmployeeSearchResponse;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.ProcessPayloadResponse;
-import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.aws.S3Service;
 import jakarta.persistence.EntityNotFoundException;
+import org.bytedeco.javacv.Frame;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -42,10 +46,12 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Value("${api.service.python.base_url}")
     private String BASE_URL_PYTHON;
     private final ObjetoS3Service objetoS3Service;
+    private final FaceDetectorService faceDetector;
     private final IAuthenticationFacade authenticationFacade;
 
-    public EmployeeServiceImpl(IAuthenticationFacade authenticationFacade, EmployeeRepository employeeRepository, S3Service s3Service, ObjectMapper objectMapper, HttpClient httpClient, ObjetoS3Service objetoS3Service) {
+    public EmployeeServiceImpl(@Qualifier(value = "yunet") FaceDetectorService faceDetector, IAuthenticationFacade authenticationFacade, EmployeeRepository employeeRepository, S3Service s3Service, ObjectMapper objectMapper, HttpClient httpClient, ObjetoS3Service objetoS3Service) {
         this.authenticationFacade = authenticationFacade;
+        this.faceDetector = faceDetector;
         this.httpClient = httpClient;
         this.s3Service = s3Service;
         this.employeeRepository = employeeRepository;
@@ -109,6 +115,8 @@ public class EmployeeServiceImpl implements EmployeeService {
         UserLoginEntity auth = authenticationFacade.getAuthentication();
         String s3Key = null;
 
+
+
         if (auth != null) {
             log.info("Usuario {} iniciou o processamento do payload do funcionário: {}", auth.getUsername(), payload.name());
         }
@@ -128,6 +136,15 @@ public class EmployeeServiceImpl implements EmployeeService {
         try {
             s3Key = criaS3Key(payload.name(), payload.siteId(), payload.localId(), file);
 
+            Frame frame = faceDetector.convertToFrame(file);
+            var detectedFaces = faceDetector.detect(frame);
+
+            if (detectedFaces.isEmpty()){
+                log.error("Nenhum rosto detectado na imagem enviada pela usuario {} para o funcionário {}. ", auth.getUsername(), payload.name());
+                throw new HaarCascadeException("Não foi possível detectar um rosto na imagem enviada. Por favor, envie uma foto clara do rosto do funcionário.");
+            }
+
+            log.warn("Rosto detectado na imagem enviada pela usuario {} para o funcionário {}. Iniciando upload para S3 com a chave: {}", auth.getUsername(), payload.name(), s3Key);
             var s3Response = s3Service.uploadFile(file, s3Key);
             // Nesse ponto salvamos o nome da foto e a extensao juntamente com o ID do usuario.
 
