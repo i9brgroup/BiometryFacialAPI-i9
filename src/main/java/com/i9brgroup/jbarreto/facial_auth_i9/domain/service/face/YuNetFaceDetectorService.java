@@ -1,6 +1,7 @@
 package com.i9brgroup.jbarreto.facial_auth_i9.domain.service.face;
 
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.FaceDetectorService;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.YuNetException;
 import org.bytedeco.javacpp.Loader;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.Java2DFrameConverter;
@@ -54,7 +55,7 @@ public class YuNetFaceDetectorService implements FaceDetectorService {
 
         } catch (Exception e) {
             logger.error("Erro ao carregar modelo YuNet: {}", e.getMessage());
-            throw new RuntimeException("Falha no carregamento da IA", e);
+            throw new YuNetException("Falha no carregamento da IA " + e.getMessage());
         }
     }
 
@@ -103,7 +104,7 @@ public class YuNetFaceDetectorService implements FaceDetectorService {
             BufferedImage bufferedImage = ImageIO.read(inputStream);
             return java2dConverter.convert(bufferedImage);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new YuNetException("Erro ao converter MultipartFile para Frame: " + e.getMessage());
         }
     }
 }

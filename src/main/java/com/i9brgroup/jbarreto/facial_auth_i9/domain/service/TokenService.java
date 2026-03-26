@@ -5,6 +5,7 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTCreationException;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.UserLoginEntity;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.JwtManagerException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -32,7 +33,7 @@ public class TokenService {
                     .withExpiresAt(expiresAt())
                     .sign(algorithm);
         } catch (JWTCreationException exception){
-            throw new RuntimeException("Erro ao gerar token", exception);
+            throw new JwtManagerException("Erro ao gerar token" + exception.getMessage());
         }
     }
 
@@ -45,7 +46,7 @@ public class TokenService {
                     .verify(token)
                     .getSubject();
         } catch (JWTVerificationException exception){
-            throw new RuntimeException("Erro ao validar token", exception);
+            throw new JwtManagerException("Erro ao validar token" + exception.getMessage());
         }
     }
 

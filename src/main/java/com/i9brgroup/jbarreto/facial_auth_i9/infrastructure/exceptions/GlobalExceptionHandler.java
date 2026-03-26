@@ -1,9 +1,6 @@
 package com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions;
 
-import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.ErrorResponse;
-import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.HaarCascadeException;
-import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.InvalidCredentialsException;
-import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.TemplatesNotFoundException;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.*;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -105,6 +102,76 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HaarCascadeException.class)
     public ResponseEntity<ErrorResponse> handleHaarCascadeException(HaarCascadeException ex) {
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage(),
+                LocalDateTime.now().format(formatter),
+                HttpStatus.INTERNAL_SERVER_ERROR.value()
+        );
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    }
+
+    @ExceptionHandler(NoFacesDetectedOnImageException.class)
+    public ResponseEntity<ErrorResponse> handleNoFacesDetectedOnImageException(NoFacesDetectedOnImageException ex) {
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage(),
+                LocalDateTime.now().format(formatter),
+                HttpStatus.BAD_REQUEST.value()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(YuNetException.class)
+    public ResponseEntity<ErrorResponse> handleYuNetException(YuNetException ex) {
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage(),
+                LocalDateTime.now().format(formatter),
+                HttpStatus.INTERNAL_SERVER_ERROR.value()
+        );
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    }
+
+    @ExceptionHandler(FileIsEmptyException.class)
+    public ResponseEntity<ErrorResponse> handleFileIsEmptyException(FileIsEmptyException ex) {
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage(),
+                LocalDateTime.now().format(formatter),
+                HttpStatus.BAD_REQUEST.value()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(PythonServiceErrorException.class)
+    public ResponseEntity<ErrorResponse> handlePythonServiceException(PythonServiceErrorException ex) {
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage(),
+                LocalDateTime.now().format(formatter),
+                HttpStatus.INTERNAL_SERVER_ERROR.value()
+        );
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    }
+
+    @ExceptionHandler(RollbackException.class)
+    public ResponseEntity<ErrorResponse> handleRollbackException(RollbackException ex) {
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage(),
+                LocalDateTime.now().format(formatter),
+                HttpStatus.INTERNAL_SERVER_ERROR.value()
+        );
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    }
+
+    @ExceptionHandler(UploadFileS3Exception.class)
+    public ResponseEntity<ErrorResponse> handleUploadFileS3Exception(UploadFileS3Exception ex) {
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage(),
+                LocalDateTime.now().format(formatter),
+                HttpStatus.INTERNAL_SERVER_ERROR.value()
+        );
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    }
+
+    @ExceptionHandler(JwtManagerException.class)
+    public ResponseEntity<ErrorResponse> handleJwtManagerException(JwtManagerException ex) {
         ErrorResponse error = new ErrorResponse(
                 ex.getMessage(),
                 LocalDateTime.now().format(formatter),

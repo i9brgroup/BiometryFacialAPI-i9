@@ -2,6 +2,7 @@ package com.i9brgroup.jbarreto.facial_auth_i9.domain.service.face;
 
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.FaceDetectorService;
 import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.HaarCascadeException;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.NoFacesDetectedOnImageException;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.Java2DFrameConverter;
 import org.bytedeco.javacv.OpenCVFrameConverter;
@@ -44,7 +45,7 @@ public class HaarFaceDetectorService implements FaceDetectorService {
             File haarCascadeFile = org.bytedeco.javacpp.Loader.cacheResource(url);
 
             faceCascade = new CascadeClassifier(haarCascadeFile.getAbsolutePath());
-            if (faceCascade.empty()) throw new RuntimeException("Cascade vazio!");
+            if (faceCascade.empty()) throw new HaarCascadeException("Cascade vazio!");
 
         } catch (Exception e) {
             throw new HaarCascadeException("Erro ao carregar XML: " + e.getMessage());
@@ -86,7 +87,9 @@ public class HaarFaceDetectorService implements FaceDetectorService {
                     Mat faceMat = new Mat(matImg, rect).clone();
                     detectedFaces.put(rect, faceMat);
                 }
-                return detectedFaces;
+
+               return detectedFaces;
+
             } finally {
                 grayImg.release();
             }

@@ -9,7 +9,10 @@ import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.FaceDetec
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.IAuthenticationFacade;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.ObjetoS3Service;
 import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.aws.S3Service;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.FileIsEmptyException;
 import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.HaarCascadeException;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.NoFacesDetectedOnImageException;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.PythonServiceErrorException;
 import com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.employee.EmployeeRepository;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.request.EmployeePayloadPythonRequest;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.EmployeeDatasResponse;
@@ -115,15 +118,13 @@ public class EmployeeServiceImpl implements EmployeeService {
         UserLoginEntity auth = authenticationFacade.getAuthentication();
         String s3Key = null;
 
-
-
         if (auth != null) {
             log.info("Usuario {} iniciou o processamento do payload do funcionário: {}", auth.getUsername(), payload.name());
         }
 
         if (file.isEmpty()) {
             log.error("Arquivo de foto vazio recebido pela usuario {} para o funcionário {}. ", auth != null ? auth.getUsername() : "Desconhecido", payload.name());
-            throw new RuntimeException("File is empty");
+            throw new FileIsEmptyException("Arquivo de foto vazio. Envie uma foto valida.");
         }
 
         var employee = employeeRepository.findEmployeeById(payload.id(), auth.getSiteId());
@@ -141,15 +142,15 @@ public class EmployeeServiceImpl implements EmployeeService {
 
             if (detectedFaces.isEmpty()){
                 log.error("Nenhum rosto detectado na imagem enviada pela usuario {} para o funcionário {}. ", auth.getUsername(), payload.name());
-                throw new HaarCascadeException("Não foi possível detectar um rosto na imagem enviada. Por favor, envie uma foto clara do rosto do funcionário.");
+                throw new NoFacesDetectedOnImageException("Não foi possível detectar um rosto na imagem enviada. Por favor, envie uma foto clara do rosto do funcionário.");
             }
 
-            log.warn("Rosto detectado na imagem enviada pela usuario {} para o funcionário {}. Iniciando upload para S3 com a chave: {}", auth.getUsername(), payload.name(), s3Key);
+            log.info("Rosto detectado na imagem enviada pela usuario {} para o funcionário {}. Iniciando upload para S3 com a chave: {}", auth.getUsername(), payload.name(), s3Key);
             var s3Response = s3Service.uploadFile(file, s3Key);
             // Nesse ponto salvamos o nome da foto e a extensao juntamente com o ID do usuario.
 
             if (s3Response) {
-                log.error("VALOR DA CHAVE DO S3 PARA DEBUGAR {}", s3Key);
+                // log.error("VALOR DA CHAVE DO S3 PARA DEBUGAR {}", s3Key);
                 var objetoS3 = new ObjetoS3(employee.getId(), s3Key);
                 var objetoS3Salvo = objetoS3Service.save(objetoS3);
 
@@ -181,9 +182,9 @@ public class EmployeeServiceImpl implements EmployeeService {
                 log.error("Iniciando Rollback do S3 para a chave: {}", s3Key);
                 s3Service.executaRollback(s3Key);
             }
-            throw new RuntimeException("Erro no processamento do funcionário", e);
+            throw new PythonServiceErrorException(e.getMessage());
         }
-        throw new RuntimeException("Erro no processamento do funcionário: Falha ao enviar o payload para o serviço Python");
+        throw new PythonServiceErrorException("Erro no processamento do funcionário: Falha ao enviar o payload para o serviço Python ");
     }
 
     @Override
@@ -212,7 +213,7 @@ public class EmployeeServiceImpl implements EmployeeService {
                 if (keyPhotoDatabase != null && deleteFile) {
                     log.info("Rollback realizado: Arquivo {} removido do S3 após resposta de erro do python. ", payload.photoKey());
                 }
-                throw new RuntimeException("Falha na integração com serviço Python: " + response.statusCode());
+                throw new PythonServiceErrorException("Falha na integração com serviço Python: " + response.statusCode());
             }
 
             log.info("Payload enviado com sucesso para o serviço Python. Status: {}", response.statusCode());
@@ -221,7 +222,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         } catch (Exception e) {
             log.error("Erro ao enviar payload para o serviço python: {}", e.getMessage());
-            throw new RuntimeException("Erro ao enviar payload para serviço python: ", e);
+            throw new PythonServiceErrorException("Erro ao enviar payload para serviço python: " + e.getMessage());
         }
     }
 }
