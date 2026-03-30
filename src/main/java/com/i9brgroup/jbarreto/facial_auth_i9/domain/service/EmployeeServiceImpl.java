@@ -182,9 +182,9 @@ public class EmployeeServiceImpl implements EmployeeService {
                 log.error("Iniciando Rollback do S3 para a chave: {}", s3Key);
                 s3Service.executaRollback(s3Key);
             }
-            throw new PythonServiceErrorException(e.getMessage());
+            throw new PythonServiceErrorException("Erro no processamento do funcionário: ");
         }
-        throw new PythonServiceErrorException("Erro no processamento do funcionário: Falha ao enviar o payload para o serviço Python ");
+        throw new PythonServiceErrorException("Erro no processamento do funcionário: Falha ao enviar o payload para o serviço Python.");
     }
 
     @Override

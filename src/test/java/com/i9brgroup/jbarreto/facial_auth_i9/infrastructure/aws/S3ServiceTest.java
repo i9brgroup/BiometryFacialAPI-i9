@@ -1,6 +1,8 @@
 package com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.aws;
 
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.ObjetoS3Service;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.FileIsEmptyException;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.UploadFileS3Exception;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -278,7 +280,7 @@ class S3ServiceTest {
         MockMultipartFile file = new MockMultipartFile("file", "test.txt", contentType, "test content".getBytes());
 
         // ACT & ASSERT
-        assertThrows(IllegalArgumentException.class, () -> s3Service.uploadFile(file, keyName));
+        assertThrows(FileIsEmptyException.class, () -> s3Service.uploadFile(file, keyName));
     }
 
     @Test
@@ -314,7 +316,7 @@ class S3ServiceTest {
             ).build());
 
         // ACT & ASSERT
-        assertThrows(S3Exception.class, () -> s3Service.uploadFile(file, keyName));
+        assertThrows(UploadFileS3Exception.class, () -> s3Service.uploadFile(file, keyName));
     }
 
     @Test
