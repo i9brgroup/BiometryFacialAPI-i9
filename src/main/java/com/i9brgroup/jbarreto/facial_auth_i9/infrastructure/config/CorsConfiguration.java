@@ -1,5 +1,6 @@
 package com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.config;
 
+import jakarta.servlet.http.Cookie;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -23,7 +24,7 @@ public class CorsConfiguration {
     private String DEFAULT_ALLOWED_ORIGIN;
     private List<String> allowedOrigins;
     private List<String> allowedMethods = List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS");
-    private List<String> allowedHeaders = List.of("*");
+    private List<String> allowedHeaders = List.of("Set-Cookie", "Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"); // Explicitly include Set-Cookie
     private boolean allowCredentials = true;
     private Long maxAge = 3600L;
 
