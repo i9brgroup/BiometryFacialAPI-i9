@@ -21,22 +21,34 @@ import org.hibernate.annotations.ParamDef;
 @AllArgsConstructor
 @NoArgsConstructor
 @FilterDef(name = "tenantFilter", parameters = @ParamDef(name = "siteId", type = String.class))
-@Filter(name = "tenantFilter", condition = "EmployeeSiteID = :siteId")
+@Filter(name = "tenantFilter", condition = "[EmployeeSiteID] = :siteId")
 public class Employee {
 
-    @Column(name = "[ID]")
+    @Column(name = "ID")
     @Id
     private String id;
-    @Column(name = "[Name]")
-    private String name;
-    @Column(name = "[EmployeeEMailAddress]")
+    @Column(name = "FirstName")
+    private String firstName;
+    @Column(name = "LastName")
+    private String lastName;
+    @Column(name = "EmployeeEMailAddress")
     private String email;
-    @Column(name = "[EmployeeSiteID]")
+    @Column(name = "EmployeeSiteID")
     private String siteId;
-    @Column(name = "[EmployeeLocalID]")
+    @Column(name = "EmployeeLocalID")
     private String localId;
-    @Column(name = "[faceTemplate]")
+    @Column(name = "BadgeNumber")
+    private String badgeNumber;
+    @Column(name = "FingerPrintTemplate", columnDefinition = "VARBINARY")
     private String faceTemplate;
-    @Column(name = "[keyPhoto]")
-    private String keyPhoto;
+
+    public Employee(String id, String name, String faceTemplate) {
+        this.id = id;
+        this.firstName = name;
+        this.faceTemplate = faceTemplate;
+    }
+
+    public String getName() {
+        return (firstName != null ? firstName : "") + (lastName != null ? " " + lastName : "");
+    }
 }

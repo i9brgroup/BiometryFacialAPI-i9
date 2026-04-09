@@ -35,9 +35,11 @@ public class UserLoginEntity implements UserDetails {
     private LocalDateTime createdAt;
     @Column(name = "site_id", nullable = false)
     private String siteId;
-    @Column(name = "roles")
+    @Column(name = "role")
     @Enumerated(EnumType.STRING)
-    private UserRoles roles;
+    private UserRoles role;
+    @Column(name = "keyPhotoS3")
+    private String photo;
 
     public UserLoginEntity(UserLoginRequest userLoginRequest) {
         this.username = userLoginRequest.username();
@@ -45,13 +47,18 @@ public class UserLoginEntity implements UserDetails {
         this.password = userLoginRequest.password();
         this.createdAt = LocalDateTime.now();
         this.siteId = userLoginRequest.siteId();
-        this.roles = userLoginRequest.roles();
+        this.role = userLoginRequest.roles();
+    }
+
+    public UserLoginEntity(String s, String site01) {
+        this.username = s;
+        this.siteId = site01;
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        if (this.roles == null) return List.of();
-        return List.of(new SimpleGrantedAuthority(this.roles.name()));
+        if (this.role == null) return List.of();
+        return List.of(new SimpleGrantedAuthority(this.role.name()));
     }
 
     @Override
