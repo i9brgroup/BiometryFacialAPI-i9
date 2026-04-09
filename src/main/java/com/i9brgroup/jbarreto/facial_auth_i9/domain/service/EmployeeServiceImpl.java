@@ -3,24 +3,31 @@ package com.i9brgroup.jbarreto.facial_auth_i9.domain.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.ObjetoS3;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.UserLoginEntity;
+import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.face.HaarFaceDetectorService;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.EmployeeService;
+import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.FaceDetectorService;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.IAuthenticationFacade;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.ObjetoS3Service;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.aws.S3Service;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.FileIsEmptyException;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.HaarCascadeException;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.NoFacesDetectedOnImageException;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.PythonServiceErrorException;
 import com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.employee.EmployeeRepository;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.request.EmployeePayloadPythonRequest;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.EmployeeDatasResponse;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.EmployeeSearchResponse;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.ProcessPayloadResponse;
-import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.aws.S3Service;
 import jakarta.persistence.EntityNotFoundException;
+import org.bytedeco.javacv.Frame;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -42,10 +49,12 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Value("${api.service.python.base_url}")
     private String BASE_URL_PYTHON;
     private final ObjetoS3Service objetoS3Service;
+    private final FaceDetectorService faceDetector;
     private final IAuthenticationFacade authenticationFacade;
 
-    public EmployeeServiceImpl(IAuthenticationFacade authenticationFacade, EmployeeRepository employeeRepository, S3Service s3Service, ObjectMapper objectMapper, HttpClient httpClient, ObjetoS3Service objetoS3Service) {
+    public EmployeeServiceImpl(@Qualifier(value = "yunet") FaceDetectorService faceDetector, IAuthenticationFacade authenticationFacade, EmployeeRepository employeeRepository, S3Service s3Service, ObjectMapper objectMapper, HttpClient httpClient, ObjetoS3Service objetoS3Service) {
         this.authenticationFacade = authenticationFacade;
+        this.faceDetector = faceDetector;
         this.httpClient = httpClient;
         this.s3Service = s3Service;
         this.employeeRepository = employeeRepository;
@@ -85,11 +94,19 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     protected String criaS3Key(String nome, String siteId, String localId, MultipartFile file) {
         var nameNormalized = nome.toLowerCase().replaceAll(" ", "_");
-        String extension = "";
+        String originalName = file.getOriginalFilename();
 
-        int i = file.getOriginalFilename().lastIndexOf('.');
-        if (i > 0) {
-            extension = file.getOriginalFilename().substring(i);
+        // Se o nome original contém '?', corta tudo que vem depois (limpa parâmetros de URL)
+        if (originalName != null && originalName.contains("?")) {
+            originalName = originalName.substring(0, originalName.indexOf("?"));
+        }
+
+        String extension = "";
+        if (originalName != null) {
+            int i = originalName.lastIndexOf('.');
+            if (i > 0) {
+                extension = originalName.substring(i);
+            }
         }
 
         return siteId + "_" + localId + "_" + nameNormalized + extension;
@@ -107,7 +124,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         if (file.isEmpty()) {
             log.error("Arquivo de foto vazio recebido pela usuario {} para o funcionário {}. ", auth != null ? auth.getUsername() : "Desconhecido", payload.name());
-            throw new RuntimeException("File is empty");
+            throw new FileIsEmptyException("Arquivo de foto vazio. Envie uma foto valida.");
         }
 
         var employee = employeeRepository.findEmployeeById(payload.id(), auth.getSiteId());
@@ -120,12 +137,20 @@ public class EmployeeServiceImpl implements EmployeeService {
         try {
             s3Key = criaS3Key(payload.name(), payload.siteId(), payload.localId(), file);
 
+            Frame frame = faceDetector.convertToFrame(file);
+            var detectedFaces = faceDetector.detect(frame);
 
+            if (detectedFaces.isEmpty()){
+                log.error("Nenhum rosto detectado na imagem enviada pela usuario {} para o funcionário {}. ", auth.getUsername(), payload.name());
+                throw new NoFacesDetectedOnImageException("Não foi possível detectar um rosto na imagem enviada. Por favor, envie uma foto clara do rosto do funcionário.");
+            }
+
+            log.info("Rosto detectado na imagem enviada pela usuario {} para o funcionário {}. Iniciando upload para S3 com a chave: {}", auth.getUsername(), payload.name(), s3Key);
             var s3Response = s3Service.uploadFile(file, s3Key);
             // Nesse ponto salvamos o nome da foto e a extensao juntamente com o ID do usuario.
 
-
             if (s3Response) {
+                // log.error("VALOR DA CHAVE DO S3 PARA DEBUGAR {}", s3Key);
                 var objetoS3 = new ObjetoS3(employee.getId(), s3Key);
                 var objetoS3Salvo = objetoS3Service.save(objetoS3);
 
@@ -157,9 +182,9 @@ public class EmployeeServiceImpl implements EmployeeService {
                 log.error("Iniciando Rollback do S3 para a chave: {}", s3Key);
                 s3Service.executaRollback(s3Key);
             }
-            throw new RuntimeException("Erro no processamento do funcionário", e);
+            throw new PythonServiceErrorException("Erro no processamento do funcionário: " + e.getMessage());
         }
-        throw new RuntimeException("Erro no processamento do funcionário: Falha ao enviar o payload para o serviço Python");
+        throw new PythonServiceErrorException("Erro no processamento do funcionário: Falha ao enviar o payload para o serviço Python.");
     }
 
     @Override
@@ -188,7 +213,7 @@ public class EmployeeServiceImpl implements EmployeeService {
                 if (keyPhotoDatabase != null && deleteFile) {
                     log.info("Rollback realizado: Arquivo {} removido do S3 após resposta de erro do python. ", payload.photoKey());
                 }
-                throw new RuntimeException("Falha na integração com serviço Python: " + response.statusCode());
+                throw new PythonServiceErrorException("Falha na integração com serviço Python: " + response.statusCode());
             }
 
             log.info("Payload enviado com sucesso para o serviço Python. Status: {}", response.statusCode());
@@ -197,7 +222,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         } catch (Exception e) {
             log.error("Erro ao enviar payload para o serviço python: {}", e.getMessage());
-            throw new RuntimeException("Erro ao enviar payload para serviço python: ", e);
+            throw new PythonServiceErrorException("Erro ao enviar payload para serviço python: " + e.getMessage());
         }
     }
 }

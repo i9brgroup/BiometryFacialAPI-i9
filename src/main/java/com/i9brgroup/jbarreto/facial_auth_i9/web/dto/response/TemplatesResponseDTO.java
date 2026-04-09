@@ -6,10 +6,11 @@ import java.util.Set;
 
 public record TemplatesResponseDTO(
         String id,
+        String nomeEmployee,
         String badgeNumber,
         String template
 ) {
     public TemplatesResponseDTO(Employee employee){
-        this(employee.getId(), employee.getBadgeNumber(), employee.getFaceTemplate());
+        this(employee.getId(),employee.getName(), employee.getBadgeNumber(), employee.getFaceTemplate());
     }
 }

@@ -3,6 +3,8 @@ package com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.aws;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.ObjetoS3Service;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.FileIsEmptyException;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.UploadFileS3Exception;
 import org.apache.tika.Tika;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -114,11 +116,11 @@ public class S3Service {
                             contentType.equals("image/png") ||
                             contentType.equals("image/jpg")) || !isValidImageFormat(multipartFile)) {
                 log.error("Tipo de arquivo inválido: {}", contentType);
-                throw new IllegalArgumentException("Apenas arquivos JPEG e PNG são permitidos.");
+                throw new FileIsEmptyException("Apenas arquivos JPEG e PNG são permitidos.");
             }
         }catch (IOException ioException){
             log.error("Erro ao validar o formato do arquivo: {}", ioException.getMessage());
-            throw new RuntimeException("Falha ao validar o formato do arquivo", ioException);
+            throw new UploadFileS3Exception("Falha ao validar o formato do arquivo" + ioException.getMessage());
         }
 
         try {
@@ -132,11 +134,11 @@ public class S3Service {
             return response.sdkHttpResponse().isSuccessful();
         } catch (IOException e) {
             log.error("Erro ao obter InputStream do arquivo: {}", e.getMessage());
-            throw new RuntimeException("Falha ao processar o arquivo para upload", e);
+            throw new UploadFileS3Exception("Falha ao processar o arquivo para upload" + e.getMessage());
         } catch (S3Exception e) {
             log.error("Erro ao fazer upload para o S3. AWS Error Code: {} Message: {}", 
                     e.awsErrorDetails().errorCode(), e.getMessage());
-            throw e;
+            throw new UploadFileS3Exception("Falha ao fazer upload para o S3: " + e.awsErrorDetails().errorMessage());
         }
     }
 

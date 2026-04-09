@@ -38,7 +38,7 @@ public class UserLoginEntity implements UserDetails {
     @Column(name = "role")
     @Enumerated(EnumType.STRING)
     private UserRoles role;
-    @Column(name = "[keyPhotoS3]")
+    @Column(name = "keyPhotoS3")
     private String photo;
 
     public UserLoginEntity(UserLoginRequest userLoginRequest) {

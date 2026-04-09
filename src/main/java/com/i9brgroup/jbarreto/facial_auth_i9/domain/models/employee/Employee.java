@@ -24,22 +24,22 @@ import org.hibernate.annotations.ParamDef;
 @Filter(name = "tenantFilter", condition = "[EmployeeSiteID] = :siteId")
 public class Employee {
 
-    @Column(name = "[ID]")
+    @Column(name = "ID")
     @Id
     private String id;
-    @Column(name = "[FirstName]")
+    @Column(name = "FirstName")
     private String firstName;
-    @Column(name = "[LastName]")
+    @Column(name = "LastName")
     private String lastName;
-    @Column(name = "[EmployeeEMailAddress]")
+    @Column(name = "EmployeeEMailAddress")
     private String email;
-    @Column(name = "[EmployeeSiteID]")
+    @Column(name = "EmployeeSiteID")
     private String siteId;
-    @Column(name = "[EmployeeLocalID]")
+    @Column(name = "EmployeeLocalID")
     private String localId;
-    @Column(name = "[BadgeNumber]")
+    @Column(name = "BadgeNumber")
     private String badgeNumber;
-    @Column(name = "[FingerPrintTemplate]", columnDefinition = "VARBINARY")
+    @Column(name = "FingerPrintTemplate", columnDefinition = "VARBINARY")
     private String faceTemplate;
 
     public Employee(String id, String name, String faceTemplate) {

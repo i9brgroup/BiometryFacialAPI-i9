@@ -6,6 +6,7 @@ import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.Inv
 import com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.auth.UserRepository;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.request.AuthenticationDataRequest;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.request.UserLoginRequest;
+import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.TokenResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -67,7 +68,8 @@ public class UserServiceImpl implements UserLoginService {
         return false;
     }
 
-    public String login(AuthenticationDataRequest userDataDTO){
+    @Override
+    public TokenResponse signIn(AuthenticationDataRequest userDataDTO){
         var authenticationToken = new UsernamePasswordAuthenticationToken(userDataDTO.email(), userDataDTO.password());
         var auth = authenticationManager.authenticate(authenticationToken);
         var user = (UserLoginEntity) auth.getPrincipal();
@@ -79,6 +81,22 @@ public class UserServiceImpl implements UserLoginService {
 
         logger.info("Usuario {} logado no sistema na data {}", user.getEmail(), LocalDateTime.now().format(formatter));
 
-        return tokenService.generateToken(user);
+        var accessToken = tokenService.createAccessToken(user);
+        var refreshToken = tokenService.createRefreshToken(user);
+
+        return new TokenResponse(accessToken, refreshToken);
     }
+
+    @Override
+    public void signOut(String refreshToken) {
+        tokenService.putTokenOnBlacklist(refreshToken);
+    }
+
+    @Override
+    public TokenResponse refresh(String refreshToken) {
+        return tokenService.refresh(refreshToken);
+    }
+
+
+
 }

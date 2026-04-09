@@ -17,8 +17,8 @@ import lombok.Setter;
 @NoArgsConstructor
 public class ObjetoS3 {
     @Id
-    @Column(name = "id")
+    @Column(name = "ID")
     private String id;
-    @Column(name = "[nomeArquivoS3]")
+    @Column(name = "[NomeObjeto]")
     private String nomeArquivoS3;
 }

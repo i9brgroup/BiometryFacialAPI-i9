@@ -3,14 +3,20 @@ package com.i9brgroup.jbarreto.facial_auth_i9.domain.service;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.ObjetoS3;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.UserLoginEntity;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.employee.Employee;
+import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.face.YuNetFaceDetectorService;
+import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.FaceDetectorService;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.IAuthenticationFacade;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.ObjetoS3Service;
 import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.aws.S3Service;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.PythonServiceErrorException;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.UploadFileS3Exception;
 import com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.employee.EmployeeRepository;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.request.EmployeePayloadPythonRequest;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.EmployeeSearchResponse;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.ProcessPayloadResponse;
 import jakarta.persistence.EntityNotFoundException;
+import org.bytedeco.opencv.opencv_core.Mat;
+import org.bytedeco.opencv.opencv_core.Rect;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,6 +25,8 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.BDDMockito.given;
@@ -33,6 +41,9 @@ class EmployeeServiceImplTest {
 
     @Mock
     private IAuthenticationFacade authenticationFacade;
+
+    @Mock
+    private YuNetFaceDetectorService faceDetectorService;
 
     @Mock
     private S3Service s3Service;
@@ -174,6 +185,7 @@ class EmployeeServiceImplTest {
         String email = "teste@hotmail.com";
         String s3Key = "SITE01_LOCAL01_john_doe.jpg";
         String presignedURL = "http://s3.url/photo.jpg";
+        Map<Rect, Mat> detectedFaces = Map.of(new Rect(0, 0, 100, 100), new Mat());
 
         EmployeePayloadPythonRequest payload = new EmployeePayloadPythonRequest(idBuscado, nome, email, siteId, localId, "photo.jpg");
         MultipartFile file = mock(MultipartFile.class);
@@ -185,6 +197,7 @@ class EmployeeServiceImplTest {
         given(authenticationFacade.getAuthentication()).willReturn(usuario);
         given(employeeRepository.findEmployeeById(idBuscado, siteId)).willReturn(employee);
         given(employee.getId()).willReturn("UUID-EXTERNO");
+        given(faceDetectorService.detect(any())).willReturn(detectedFaces);
         
         given(s3Service.uploadFile(file, s3Key)).willReturn(true);
         given(objetoS3Service.save(any(ObjetoS3.class))).willReturn(objetoS3);
@@ -212,8 +225,11 @@ class EmployeeServiceImplTest {
         EmployeePayloadPythonRequest payload = new EmployeePayloadPythonRequest(idBuscado, "John Doe", "teste@hotmail.com", siteId, "LOCAL01", "photo.jpg");
         MultipartFile file = mock(MultipartFile.class);
         UserLoginEntity usuario = new UserLoginEntity("junior.dev", siteId);
+        Map<Rect, Mat> detectedFaces = Map.of(new Rect(0, 0, 100, 100), new Mat());
+
 
         given(file.isEmpty()).willReturn(false);
+        given(faceDetectorService.detect(any())).willReturn(detectedFaces);
         given(file.getOriginalFilename()).willReturn("photo.jpg");
         given(authenticationFacade.getAuthentication()).willReturn(usuario);
         given(employeeRepository.findEmployeeById(idBuscado, siteId)).willReturn(employee);
@@ -221,8 +237,8 @@ class EmployeeServiceImplTest {
         given(s3Service.uploadFile(any(), anyString())).willReturn(false);
 
         // ACT - ASSERT
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> employeeService.processPayload(payload, file));
-        assertTrue(exception.getMessage().contains("Falha ao enviar o payload"));
+        PythonServiceErrorException exception = assertThrows(PythonServiceErrorException.class, () -> employeeService.processPayload(payload, file));
+        assertTrue(exception.getMessage().contains("Erro no processamento do funcionário: Falha ao enviar o payload para o serviço Python."));
     }
 
     @Test
@@ -234,18 +250,21 @@ class EmployeeServiceImplTest {
         EmployeePayloadPythonRequest payload = new EmployeePayloadPythonRequest(idBuscado, "John Doe", "teste@hotmail.com", siteId, "LOCAL01", "photo.jpg");
         MultipartFile file = mock(MultipartFile.class);
         UserLoginEntity usuario = new UserLoginEntity("junior.dev", siteId);
+        Map<Rect, Mat> detectedFaces = Map.of(new Rect(0, 0, 100, 100), new Mat());
+
 
         given(file.isEmpty()).willReturn(false);
+        given(faceDetectorService.detect(any())).willReturn(detectedFaces);
         given(file.getOriginalFilename()).willReturn("photo.jpg");
         given(authenticationFacade.getAuthentication()).willReturn(usuario);
         given(employeeRepository.findEmployeeById(idBuscado, siteId)).willReturn(employee);
         
         // Simular erro no upload para disparar o catch
         given(s3Service.uploadFile(any(), anyString())).willReturn(true);
-        given(objetoS3Service.save(any())).willThrow(new RuntimeException("Erro de Banco"));
+        given(objetoS3Service.save(any())).willThrow(new PythonServiceErrorException("Erro de Banco"));
 
         // ACT - ASSERT
-        assertThrows(RuntimeException.class, () -> employeeService.processPayload(payload, file));
+        assertThrows(PythonServiceErrorException.class, () -> employeeService.processPayload(payload, file));
         then(s3Service).should().executaRollback(anyString());
     }
 
@@ -258,6 +277,8 @@ class EmployeeServiceImplTest {
         EmployeePayloadPythonRequest payload = new EmployeePayloadPythonRequest(
                 idBuscado, "John Doe", "teste@hotmail.com", siteId, "LOCAL01", null
         );
+        Map<Rect, Mat> detectedFaces = Map.of(new Rect(0, 0, 100, 100), new Mat());
+
 
         MultipartFile file = mock(MultipartFile.class);
         given(file.isEmpty()).willReturn(false);
@@ -266,17 +287,19 @@ class EmployeeServiceImplTest {
         UserLoginEntity usuario = new UserLoginEntity("junior.dev", siteId);
         given(authenticationFacade.getAuthentication()).willReturn(usuario);
         given(employeeRepository.findEmployeeById(idBuscado, siteId)).willReturn(employee);
+        given(faceDetectorService.detect(any())).willReturn(detectedFaces);
 
         // O PONTO CHAVE: O upload não quebra, mas retorna false
         given(s3Service.uploadFile(eq(file), anyString())).willReturn(false);
 
+
         // ACT & ASSERT
-        RuntimeException exception = assertThrows(RuntimeException.class, () ->
+        PythonServiceErrorException exception = assertThrows(PythonServiceErrorException.class, () ->
                 employeeService.processPayload(payload, file)
         );
 
         // Validamos que a mensagem é a de falha no envio do payload/serviço Python
-        assertTrue(exception.getMessage().contains("Falha ao enviar o payload para o serviço Python"));
+        assertTrue(exception.getMessage().contains("Erro no processamento do funcionário:"));
 
         // Verificamos que o banco de dados e o serviço Python NUNCA foram chamados
         then(objetoS3Service).shouldHaveNoInteractions();
@@ -294,12 +317,15 @@ class EmployeeServiceImplTest {
         MultipartFile file = mock(MultipartFile.class);
         UserLoginEntity usuario = new UserLoginEntity("junior.dev", siteId);
         ObjetoS3 objetoS3 = new ObjetoS3("UUID-EXTERNO", s3Key);
+        Map<Rect, Mat> detectedFaces = Map.of(new Rect(0, 0, 100, 100), new Mat());
+
 
         given(file.isEmpty()).willReturn(false);
         given(file.getOriginalFilename()).willReturn("photo.jpg");
         given(authenticationFacade.getAuthentication()).willReturn(usuario);
         given(employeeRepository.findEmployeeById(idBuscado, siteId)).willReturn(employee);
         given(employee.getId()).willReturn("UUID-EXTERNO");
+        given(faceDetectorService.detect(any())).willReturn(detectedFaces);
         
         given(s3Service.uploadFile(file, s3Key)).willReturn(true);
         given(objetoS3Service.save(any(ObjetoS3.class))).willReturn(objetoS3);
@@ -308,7 +334,7 @@ class EmployeeServiceImplTest {
         doReturn(pythonResponse).when(employeeService).sendPayloadToPythonService(any(EmployeePayloadPythonRequest.class), anyString());
 
         // ACT - ASSERT
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> employeeService.processPayload(payload, file));
-        assertTrue(exception.getMessage().contains("Falha ao enviar o payload para o serviço Python"));
+        PythonServiceErrorException exception = assertThrows(PythonServiceErrorException.class, () -> employeeService.processPayload(payload, file));
+        assertTrue(exception.getMessage().contains("Erro no processamento do funcionário: "));
     }
 }
