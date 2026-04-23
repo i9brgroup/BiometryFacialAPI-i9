@@ -125,9 +125,9 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(
                 ex.getMessage(),
                 LocalDateTime.now().format(formatter),
-                HttpStatus.INTERNAL_SERVER_ERROR.value()
+                HttpStatus.BAD_REQUEST.value()
         );
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
     @ExceptionHandler(FileIsEmptyException.class)

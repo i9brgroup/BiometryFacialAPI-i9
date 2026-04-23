@@ -9,10 +9,7 @@ import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.FaceDetec
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.IAuthenticationFacade;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.ObjetoS3Service;
 import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.aws.S3Service;
-import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.FileIsEmptyException;
-import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.HaarCascadeException;
-import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.NoFacesDetectedOnImageException;
-import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.PythonServiceErrorException;
+import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.*;
 import com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.employee.EmployeeRepository;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.request.EmployeePayloadPythonRequest;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.EmployeeDatasResponse;
@@ -177,6 +174,9 @@ public class EmployeeServiceImpl implements EmployeeService {
                 }
             }
 
+        } catch (NoFacesDetectedOnImageException | YuNetException e) {
+            // Relança exceções de negócio específicas para serem tratadas pelo GlobalExceptionHandler com status 400
+            throw e;
         } catch (Exception e) {
             if (s3Key != null) {
                 log.error("Iniciando Rollback do S3 para a chave: {}", s3Key);
