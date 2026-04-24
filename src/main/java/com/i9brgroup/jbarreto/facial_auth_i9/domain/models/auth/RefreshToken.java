@@ -17,6 +17,4 @@ public class RefreshToken {
     private String tokenHash;
     private Long userId;
     private Instant expiresAt;
-
-
 }
