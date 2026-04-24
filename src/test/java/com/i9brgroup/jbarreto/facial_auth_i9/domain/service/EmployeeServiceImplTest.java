@@ -4,12 +4,10 @@ import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.ObjetoS3;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.UserLoginEntity;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.employee.Employee;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.face.YuNetFaceDetectorService;
-import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.FaceDetectorService;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.IAuthenticationFacade;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.ObjetoS3Service;
 import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.aws.S3Service;
 import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.PythonServiceErrorException;
-import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.UploadFileS3Exception;
 import com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.employee.EmployeeRepository;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.request.EmployeePayloadPythonRequest;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.EmployeeSearchResponse;
@@ -57,6 +55,10 @@ class EmployeeServiceImplTest {
     @InjectMocks
     @Spy
     private EmployeeServiceImpl employeeService;
+
+    @InjectMocks
+    @Spy
+    private PayloadService payloadService;
 
     @Test
     @DisplayName("Deve buscar corretamente um funcionário por ID")
@@ -152,7 +154,7 @@ class EmployeeServiceImplTest {
 
 
         // ACT - ASSERT
-        assertThrows(RuntimeException.class, () -> employeeService.processPayload(payload, file));
+        assertThrows(RuntimeException.class, () -> payloadService.processPayload(payload, file));
     }
 
     @Test
@@ -171,7 +173,7 @@ class EmployeeServiceImplTest {
         given(employeeRepository.findEmployeeById(idBuscado, siteId)).willReturn(null);
 
         // ACT - ASSERT
-        assertThrows(EntityNotFoundException.class, () -> employeeService.processPayload(payload, file));
+        assertThrows(EntityNotFoundException.class, () -> payloadService.processPayload(payload, file));
     }
 
     @Test
@@ -204,10 +206,10 @@ class EmployeeServiceImplTest {
         given(s3Service.generatedPreSignedUrlForPhotosEmployees(s3Key)).willReturn(presignedURL);
         
         ProcessPayloadResponse pythonResponse = new ProcessPayloadResponse("done");
-        doReturn(pythonResponse).when(employeeService).sendPayloadToPythonService(any(EmployeePayloadPythonRequest.class), anyString());
+        doReturn(pythonResponse).when(payloadService).sendPayloadToPythonService(any(EmployeePayloadPythonRequest.class), anyString());
 
         // ACT
-        ProcessPayloadResponse response = employeeService.processPayload(payload, file);
+        ProcessPayloadResponse response = payloadService.processPayload(payload, file);
 
         // ASSERT
         assertNotNull(response);
@@ -237,7 +239,7 @@ class EmployeeServiceImplTest {
         given(s3Service.uploadFile(any(), anyString())).willReturn(false);
 
         // ACT - ASSERT
-        PythonServiceErrorException exception = assertThrows(PythonServiceErrorException.class, () -> employeeService.processPayload(payload, file));
+        PythonServiceErrorException exception = assertThrows(PythonServiceErrorException.class, () -> payloadService.processPayload(payload, file));
         assertTrue(exception.getMessage().contains("Erro no processamento do funcionário: Falha ao enviar o payload para o serviço Python."));
     }
 
@@ -264,7 +266,7 @@ class EmployeeServiceImplTest {
         given(objetoS3Service.save(any())).willThrow(new PythonServiceErrorException("Erro de Banco"));
 
         // ACT - ASSERT
-        assertThrows(PythonServiceErrorException.class, () -> employeeService.processPayload(payload, file));
+        assertThrows(PythonServiceErrorException.class, () -> payloadService.processPayload(payload, file));
         then(s3Service).should().executaRollback(anyString());
     }
 
@@ -295,7 +297,7 @@ class EmployeeServiceImplTest {
 
         // ACT & ASSERT
         PythonServiceErrorException exception = assertThrows(PythonServiceErrorException.class, () ->
-                employeeService.processPayload(payload, file)
+                payloadService.processPayload(payload, file)
         );
 
         // Validamos que a mensagem é a de falha no envio do payload/serviço Python
@@ -331,10 +333,10 @@ class EmployeeServiceImplTest {
         given(objetoS3Service.save(any(ObjetoS3.class))).willReturn(objetoS3);
         
         ProcessPayloadResponse pythonResponse = new ProcessPayloadResponse("fail");
-        doReturn(pythonResponse).when(employeeService).sendPayloadToPythonService(any(EmployeePayloadPythonRequest.class), anyString());
+        doReturn(pythonResponse).when(payloadService).sendPayloadToPythonService(any(EmployeePayloadPythonRequest.class), anyString());
 
         // ACT - ASSERT
-        PythonServiceErrorException exception = assertThrows(PythonServiceErrorException.class, () -> employeeService.processPayload(payload, file));
+        PythonServiceErrorException exception = assertThrows(PythonServiceErrorException.class, () -> payloadService.processPayload(payload, file));
         assertTrue(exception.getMessage().contains("Erro no processamento do funcionário: "));
     }
 }
