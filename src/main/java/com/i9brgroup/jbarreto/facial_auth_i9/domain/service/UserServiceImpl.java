@@ -6,9 +6,14 @@ import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.exceptions.model.Inv
 import com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.auth.UserRepository;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.request.AuthenticationDataRequest;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.request.UserLoginRequest;
+import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.ListUserResponse;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.TokenResponse;
+import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -30,13 +35,15 @@ public class UserServiceImpl implements UserLoginService {
     private final PasswordEncoder passwordEncoder;
     private final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private final RefreshTokenStore refreshTokenStore;
 
     public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder,
-                           AuthenticationManager authenticationManager, TokenService tokenService) {
+                           AuthenticationManager authenticationManager, TokenService tokenService, RefreshTokenStore refreshTokenStore) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.tokenService = tokenService;
+        this.refreshTokenStore = refreshTokenStore;
     }
 
     @Override
@@ -46,7 +53,7 @@ public class UserServiceImpl implements UserLoginService {
         }
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
-        if (auth != null){
+        if (auth != null) {
             logger.info("Usuario {} tentativa de cadastro de novo usuário com email: {}", auth.getName(), userLoginRequest.email());
         }
 
@@ -59,17 +66,14 @@ public class UserServiceImpl implements UserLoginService {
     }
 
     @Override
-    public List<UserLoginEntity> getAllUsers() {
-        return userRepository.findAll();
+    public Page<ListUserResponse> getAllUsersPageable(Integer page, Integer size, String orderBy, String direction) {
+        PageRequest pageRequest = PageRequest.of(page, size, Sort.Direction.valueOf(direction), orderBy);
+        Page<UserLoginEntity> foundUsers = userRepository.findAll(pageRequest);
+        return foundUsers.map(ListUserResponse::new);
     }
 
     @Override
-    public boolean deleteById(Long id) {
-        return false;
-    }
-
-    @Override
-    public TokenResponse signIn(AuthenticationDataRequest userDataDTO){
+    public TokenResponse signIn(AuthenticationDataRequest userDataDTO) {
         var authenticationToken = new UsernamePasswordAuthenticationToken(userDataDTO.email(), userDataDTO.password());
         var auth = authenticationManager.authenticate(authenticationToken);
         var user = (UserLoginEntity) auth.getPrincipal();
@@ -97,6 +101,16 @@ public class UserServiceImpl implements UserLoginService {
         return tokenService.refresh(refreshToken);
     }
 
+    @Override
+    @Transactional
+    public boolean toggleActive(Long id) {
+        var user = userRepository.findById(id).orElseThrow(() -> new UsernameNotFoundException("User not found with id: " + id));
+        var newStatus = user.toggleAtivo();
+        userRepository.save(user);
 
-
+        if (!newStatus) {
+            refreshTokenStore.deleteByUserId(id);
+        }
+        return newStatus;
+    }
 }

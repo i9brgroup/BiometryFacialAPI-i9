@@ -23,9 +23,8 @@ public class UserAuthentication implements UserDetailsService {
         var user = userRepository.findByEmail((username));
 
         if (user == null) {
-            throw new UsernameNotFoundException("Credenciais incorretas para o user: " + username);
+            throw new UsernameNotFoundException("Credenciais incorretas.");
         }
-
         return user;
     }
 }

@@ -32,6 +32,12 @@ public class RefreshTokenStore {
         log.info("RefreshTokenStore scheduled cleanup tasks initialized.");
     }
 
+    public void deleteByUserId(Long userId) {
+        activeTokens.entrySet().removeIf(entry -> entry.getValue().getUserId().equals(userId));
+        blackList.entrySet().removeIf(entry -> entry.getValue().getUserId().equals(userId));
+        log.info("RefreshTokenStore deleted tokens for userId: {}", userId);
+    }
+
     public void store(RefreshToken token) {
         if (token == null || token.getId() == null) {
             throw new IllegalArgumentException("RefreshToken and its id must not be null");

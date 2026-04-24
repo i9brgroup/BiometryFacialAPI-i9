@@ -20,6 +20,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @EqualsAndHashCode(of = "id")
+@Builder
 public class UserLoginEntity implements UserDetails {
 
     @Id
@@ -38,8 +39,8 @@ public class UserLoginEntity implements UserDetails {
     @Column(name = "role")
     @Enumerated(EnumType.STRING)
     private UserRoles role;
-    @Column(name = "keyPhotoS3")
-    private String photo;
+    @Column(name = "ativo", nullable = false)
+    private Boolean ativo = true;
 
     public UserLoginEntity(UserLoginRequest userLoginRequest) {
         this.username = userLoginRequest.username();
@@ -50,9 +51,19 @@ public class UserLoginEntity implements UserDetails {
         this.role = userLoginRequest.roles();
     }
 
+    @Override
+    public boolean isEnabled() {
+        return this.ativo;
+    }
+
     public UserLoginEntity(String s, String site01) {
         this.username = s;
         this.siteId = site01;
+    }
+
+    public boolean toggleAtivo() {
+        this.ativo = !this.ativo;
+        return this.ativo;
     }
 
     @Override
