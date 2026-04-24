@@ -39,6 +39,8 @@ public class Employee {
     private String localId;
     @Column(name = "BadgeNumber")
     private String badgeNumber;
+    @Column(name = "EmployeeInactive")
+    private boolean active;
     @Column(name = "FingerPrintTemplate", columnDefinition = "VARBINARY")
     private String faceTemplate;
 
