@@ -1,19 +1,19 @@
 package com.i9brgroup.jbarreto.facial_auth_i9.domain.service;
 
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.auth.UserLoginEntity;
+import com.i9brgroup.jbarreto.facial_auth_i9.domain.models.employee.Employee;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.EmployeeService;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.IAuthenticationFacade;
 import com.i9brgroup.jbarreto.facial_auth_i9.domain.service.interfaces.ObjetoS3Service;
 import com.i9brgroup.jbarreto.facial_auth_i9.infrastructure.aws.S3Service;
 import com.i9brgroup.jbarreto.facial_auth_i9.resources.repository.employee.EmployeeRepository;
-import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.EmployeeDatasResponse;
 import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.EmployeeSearchResponse;
+import com.i9brgroup.jbarreto.facial_auth_i9.web.dto.response.ListEmployeePageResponse;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
@@ -34,9 +34,10 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
-    public Page<EmployeeDatasResponse> buscarTodosFuncionarios(Pageable pagination) {
-        Pageable pageable = PageRequest.of(pagination.getPageNumber(), pagination.getPageSize(), Sort.by("firstName"));
-        return employeeRepository.findAll(pageable).map(EmployeeDatasResponse::new);
+    public Page<ListEmployeePageResponse> getAllEmployeePageable(Integer page, Integer size, String orderBy, String direction) {
+        PageRequest pageRequest = PageRequest.of(page, size, Sort.Direction.valueOf(direction), orderBy);
+        Page<Employee> foundUsers = employeeRepository.findAll(pageRequest);
+        return foundUsers.map(ListEmployeePageResponse::new);
     }
 
     @Override
