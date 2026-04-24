@@ -6,6 +6,7 @@ import org.bytedeco.javacpp.Loader;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.Java2DFrameConverter;
 import org.bytedeco.javacv.OpenCVFrameConverter;
+import org.bytedeco.opencv.global.opencv_imgproc;
 import org.bytedeco.opencv.opencv_core.Mat;
 import org.bytedeco.opencv.opencv_core.Rect;
 import org.bytedeco.opencv.opencv_core.Size;
@@ -70,31 +71,40 @@ public class YuNetFaceDetectorService implements FaceDetectorService {
                 return new HashMap<>();
             }
 
-            // Define o tamanho da entrada baseado na imagem atual
-            faceDetector.setInputSize(new Size(matImg.cols(), matImg.rows()));
-
-            Mat faces = new Mat();
-            faceDetector.detect(matImg, faces);
-
-            Map<Rect, Mat> detectedFaces = new HashMap<>();
-            for (int i = 0; i < faces.rows(); i++) {
-                // Pegando as coordenadas do rosto
-                float x = faces.ptr(i, 0).getFloat();
-                float y = faces.ptr(i, 1).getFloat();
-                float w = faces.ptr(i, 2).getFloat();
-                float h = faces.ptr(i, 3).getFloat();
-
-                Rect rect = new Rect((int) x, (int) y, (int) w, (int) h);
-
-                // .clone() é OBRIGATÓRIO aqui para criar uma cópia da memória
-                // que não depende do matImg original
-                detectedFaces.put(rect, new Mat(matImg, rect).clone());
+            // Garante que a imagem tenha 3 canais (RGB) para o YuNet
+            if (matImg.channels() == 4) {
+                Mat rgbMat = new Mat();
+                opencv_imgproc.cvtColor(matImg, rgbMat, opencv_imgproc.COLOR_RGBA2RGB);
+                matImg = rgbMat;
             }
 
-            // Opcional: Liberar memória manualmente se o volume de fotos for gigante
-            // faces.release();
+            try {
+                // Define o tamanho da entrada baseado na imagem atual
+                faceDetector.setInputSize(new Size(matImg.cols(), matImg.rows()));
 
-            return detectedFaces;
+                Mat faces = new Mat();
+                faceDetector.detect(matImg, faces);
+
+                Map<Rect, Mat> detectedFaces = new HashMap<>();
+                for (int i = 0; i < faces.rows(); i++) {
+                    // Pegando as coordenadas do rosto
+                    float x = faces.ptr(i, 0).getFloat();
+                    float y = faces.ptr(i, 1).getFloat();
+                    float w = faces.ptr(i, 2).getFloat();
+                    float h = faces.ptr(i, 3).getFloat();
+
+                    Rect rect = new Rect((int) x, (int) y, (int) w, (int) h);
+
+                    // .clone() é OBRIGATÓRIO aqui para criar uma cópia da memória
+                    // que não depende do matImg original
+                    detectedFaces.put(rect, new Mat(matImg, rect).clone());
+                }
+
+                return detectedFaces;
+            } catch (Exception e) {
+                logger.error("Erro OpenCV durante detecção YuNet: {}", e.getMessage());
+                throw new YuNetException("Erro ao processar imagem para detecção facial: formato ou canais inválidos.");
+            }
         }
     }
 
